@@ -1,0 +1,85 @@
+services:
+  # Eureka Server
+  eureka-server:
+    build:
+      context: ./eureka-server
+    container_name: eureka-server-new
+    ports:
+      - "8761:8761"
+    environment:
+      - SPRING_PROFILES_ACTIVE=default
+    networks:
+      - app-network
+    restart: always
+
+  # Order Service
+  order-service:
+    build:
+      context: ./order-service
+    container_name: order-service
+    ports:
+      - "8081:8081"
+    environment:
+      - EUREKA_SERVER_URL=http://eureka-server-new:8761/eureka/
+      - SPRING_PROFILES_ACTIVE=docker
+    depends_on:
+      - eureka-server
+      - mysql
+    networks:
+      - app-network
+    restart: always
+
+  # User Service
+  user-service:
+    build:
+      context: ./user-service
+    container_name: user-service-new
+    ports:
+      - "8083:8083"
+    environment:
+      - EUREKA_SERVER_URL=http://eureka-server-new:8761/eureka/
+      - SPRING_PROFILES_ACTIVE=docker
+    depends_on:
+      - eureka-server
+    networks:
+      - app-network
+    restart: always
+
+  # Product Service
+  product-service:
+    build:
+      context: ./product-service
+    container_name: product-service
+    ports:
+      - "8082:8082"
+    environment:
+      - EUREKA_SERVER_URL=http://eureka-server-new:8761/eureka/
+      - SPRING_PROFILES_ACTIVE=docker
+    depends_on:
+      - eureka-server
+      - mysql
+    networks:
+      - app-network
+    restart: always
+
+  # MySQL Database
+  mysql:
+    image: mysql:8
+    container_name: mysql-db
+    environment:
+      - MYSQL_ROOT_PASSWORD=123456
+      - MYSQL_DATABASE=order_db
+    volumes:
+      - mysql-data:/var/lib/mysql
+    networks:
+      - app-network
+    ports:
+      - "3307:3306" # Đổi cổng host từ 3306 thành 3307
+
+networks:
+  app-network:
+    driver: bridge
+
+volumes:
+  mysql-data:
+    driver: local
