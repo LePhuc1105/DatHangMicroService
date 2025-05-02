@@ -41,6 +41,7 @@ services:
       - SPRING_PROFILES_ACTIVE=docker
     depends_on:
       - eureka-server
+      - mysql
     networks:
       - app-network
     restart: always
@@ -62,6 +63,18 @@ services:
       - app-network
     restart: always
 
+  # Frontend Service
+  frontend:
+    image: nginx:alpine
+    container_name: frontend
+    ports:
+      - "80:80"
+    volumes:
+      - ./frontend:/usr/share/nginx/html
+    networks:
+      - app-network
+    restart: always
+
   # MySQL Database
   mysql:
     image: mysql:8
@@ -69,8 +82,11 @@ services:
     environment:
       - MYSQL_ROOT_PASSWORD=123456
       - MYSQL_DATABASE=order_db
+      - MYSQL_DATABASE_USER=user_db
+      - MYSQL_DATABASE_PRODUCT=product_db
     volumes:
       - mysql-data:/var/lib/mysql
+      - ./init-scripts:/docker-entrypoint-initdb.d
     networks:
       - app-network
     ports:

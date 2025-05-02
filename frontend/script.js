@@ -14,154 +14,171 @@ let products = []; // Store products fetched from Product Service
 let selectedProduct = null;
 let selectedQuantity = 0;
 let isUserValid = false; // Track if user is valid
+let userData = null;
+
+// Initialize
+document.addEventListener('DOMContentLoaded', () => {
+    fetchProducts();
+    setupEventListeners();
+});
+
+// Event Listeners
+function setupEventListeners() {
+    userForm.addEventListener('submit', handleUserSubmit);
+    submitOrderButton.addEventListener('click', handleOrderSubmit);
+}
 
 // Function to fetch and display products
-function fetchProducts() {
-  fetch('http://localhost:8082/api/products/')
-    .then(response => {
-      if (!response.ok) throw new Error('Không thể tải sản phẩm.');
-      return response.json();
-    })
-    .then(data => {
-      products = data;
-      displayProducts();
-    })
-    .catch(error => {
-      console.error('Error fetching products:', error);
-      productErrorMessage.textContent = 'Không thể tải sản phẩm.';
-    });
+async function fetchProducts() {
+    try {
+        const response = await fetch('http://localhost:8082/api/products/');
+        if (!response.ok) throw new Error('Không thể tải danh sách sản phẩm');
+        
+        const products = await response.json();
+        displayProducts(products);
+    } catch (error) {
+        showError(productErrorMessage, error.message);
+    }
 }
 
 // Display products in dropdown
-function displayProducts() {
-  productList.innerHTML = '';
-  products.forEach(product => {
-    const productDiv = document.createElement('div');
-    productDiv.innerHTML = `
-      <span>${product.name} - Giá: ${product.price} VND</span>
-      <select onchange="selectProduct(${product.id}, ${product.quantity})">
-        <option value="">Chọn số lượng</option>
-        ${Array.from({ length: product.quantity }).map((_, index) => `<option value="${index + 1}">${index + 1}</option>`).join('')}
-      </select>
-    `;
-    productList.appendChild(productDiv);
-  });
+function displayProducts(products) {
+    productList.innerHTML = products.map(product => `
+        <div class="product-item" data-id="${product.id}" onclick="selectProduct(this, ${product.id}, '${product.name}', ${product.price})">
+            <h6>${product.name}</h6>
+            <p>${formatPrice(product.price)} VND</p>
+        </div>
+    `).join('');
 }
 
 // Handle product selection
-function selectProduct(productId, maxQuantity) {
-  const quantity = parseInt(event.target.value);
-  if (!quantity) {
-    selectedProduct = null;
-    selectedQuantity = 0;
-    orderSummary.innerHTML = '';
-    submitOrderButton.disabled = true;
-    return;
-  }
+function selectProduct(element, id, name, price) {
+    // Remove selected class from all products
+    document.querySelectorAll('.product-item').forEach(item => {
+        item.classList.remove('selected');
+    });
+    
+    // Add selected class to clicked product
+    element.classList.add('selected');
+    
+    // Update selected product
+    selectedProduct = { id, name, price };
+    
+    // Update order summary
+    updateOrderSummary();
+    
+    // Enable submit button if user data exists
+    if (userData) {
+        submitOrderButton.disabled = false;
+    }
+}
 
-  // Find selected product from products array
-  const product = products.find(p => p.id === productId);
-  selectedProduct = product;  // Gán sản phẩm đã chọn
-  selectedQuantity = quantity;
-
-  // Hiển thị thông tin sản phẩm và số lượng đã chọn
-  orderSummary.innerHTML = `
-    <strong>Sản phẩm:</strong> ${selectedProduct.name} <br>
-    <strong>Số lượng:</strong> ${selectedQuantity} <br>
-    <strong>Tổng:</strong> ${selectedProduct.price * selectedQuantity} VND
-  `;
-
-  // Chỉ kích hoạt nút đặt hàng khi người dùng hợp lệ
-  submitOrderButton.disabled = !isUserValid;
+// Update Order Summary
+function updateOrderSummary() {
+    if (selectedProduct) {
+        document.getElementById('selectedProductName').textContent = selectedProduct.name;
+        document.getElementById('productPrice').textContent = formatPrice(selectedProduct.price) + ' VND';
+        document.getElementById('totalPrice').textContent = formatPrice(selectedProduct.price) + ' VND';
+    }
 }
 
 // Handle user form submission (check user)
-userForm.addEventListener('submit', (e) => {
-  e.preventDefault();
-  const username = usernameField.value;
-  const email = emailField.value;
-  const address = addressField.value;
-  const phone = phoneField.value;
-
-  fetch(`http://localhost:8083/api/users/${username}`)
-    .then(response => {
-      if (response.status === 404) {
-        throw new Error('Tài khoản không tồn tại. Vui lòng sử dụng tài khoản hợp lệ.');
-      }
-      if (!response.ok) {
-        throw new Error('Không thể kiểm tra tài khoản.');
-      }
-      return response.json();
-    })
-    .then(user => {
-      if (!user) {
-        throw new Error('Tài khoản không tồn tại. Vui lòng sử dụng tài khoản hợp lệ.');
-      }
-      userErrorMessage.textContent = '';
-      isUserValid = true; // Mark user as valid
-      productList.innerHTML = ''; // Clear previous products
-      orderSummary.innerHTML = ''; // Clear order summary
-      submitOrderButton.disabled = true; // Disable order button until product is selected
-      fetchProducts(); // Fetch products only after validating the user
-    })
-    .catch(error => {
-      console.error('Error checking user:', error);
-      userErrorMessage.textContent = error.message;
-      isUserValid = false; // Mark user as invalid
-      productList.innerHTML = ''; // Clear product list
-      orderSummary.innerHTML = ''; // Clear order summary
-      submitOrderButton.disabled = true; // Disable order button
-    });
-});
+async function handleUserSubmit(event) {
+    event.preventDefault();
+    
+    const formData = {
+        username: usernameField.value,
+        email: emailField.value,
+        address: addressField.value,
+        phone: phoneField.value
+    };
+    
+    try {
+        const response = await fetch('http://localhost:8081/api/users/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(formData)
+        });
+        
+        if (!response.ok) throw new Error('Không thể tạo người dùng');
+        
+        const data = await response.json();
+        userData = data;
+        hideError(userErrorMessage);
+        
+        // Enable submit button if product is selected
+        if (selectedProduct) {
+            submitOrderButton.disabled = false;
+        }
+    } catch (error) {
+        showError(userErrorMessage, error.message);
+    }
+}
 
 // Handle order submission
-submitOrderButton.addEventListener('click', () => {
-  if (!isUserValid) {
-    userErrorMessage.textContent = 'Vui lòng sử dụng tài khoản hợp lệ trước khi đặt hàng.';
-    return;
-  }
+async function handleOrderSubmit() {
+    if (!userData || !selectedProduct) return;
+    
+    const orderData = {
+        userId: userData.id,
+        productId: selectedProduct.id,
+        quantity: 1,
+        totalPrice: selectedProduct.price
+    };
+    
+    try {
+        const response = await fetch('http://localhost:8083/api/orders/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(orderData)
+        });
+        
+        if (!response.ok) throw new Error('Không thể tạo đơn hàng');
+        
+        const data = await response.json();
+        showSuccess('Đơn hàng đã được tạo thành công!');
+        resetForm();
+    } catch (error) {
+        showError(userErrorMessage, error.message);
+    }
+}
 
-  if (!selectedProduct || selectedQuantity <= 0) {
-    productErrorMessage.textContent = 'Sản phẩm hoặc số lượng không hợp lệ.';
-    return;
-  }
+// Utility Functions
+function formatPrice(price) {
+    return new Intl.NumberFormat('vi-VN').format(price);
+}
 
-  const order = {
-    productId: selectedProduct.id, // Gán đúng ID sản phẩm
-    quantity: selectedQuantity,
-    customerName: usernameField.value,
-    customerAddress: addressField.value,
-  };
+function showError(element, message) {
+    element.textContent = message;
+    element.classList.remove('d-none');
+    setTimeout(() => {
+        hideError(element);
+    }, 5000);
+}
 
-  console.log('Order:', order);
+function hideError(element) {
+    element.classList.add('d-none');
+}
 
-  fetch('http://localhost:8081/orders', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(order),
-  })
-    .then(response => {
-      if (!response.ok) {
-        throw new Error('Không thể đặt hàng. Vui lòng thử lại.');
-      }
-      return response.json();
-    })
-    .then(orderData => {
-      successMessage.classList.remove('hidden');
-      setTimeout(() => successMessage.classList.add('hidden'), 5000);
-      // Reset form after successful order
-      userForm.reset();
-      productList.innerHTML = '';
-      orderSummary.innerHTML = '';
-      submitOrderButton.disabled = true;
-      isUserValid = false;
-      selectedProduct = null;
-      selectedQuantity = 0;
-    })
-    .catch(error => {
-      console.error('Error placing order:', error);
-      productErrorMessage.textContent = error.message;
+function showSuccess(message) {
+    successMessage.textContent = message;
+    successMessage.classList.remove('d-none');
+    setTimeout(() => {
+        successMessage.classList.add('d-none');
+    }, 5000);
+}
+
+function resetForm() {
+    userForm.reset();
+    document.querySelectorAll('.product-item').forEach(item => {
+        item.classList.remove('selected');
     });
-});
+    selectedProduct = null;
+    userData = null;
+    submitOrderButton.disabled = true;
+    updateOrderSummary();
+}
