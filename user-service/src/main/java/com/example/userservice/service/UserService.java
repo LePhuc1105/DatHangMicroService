@@ -9,6 +9,7 @@ import java.util.Optional;
 
 public interface UserService {
     Optional<User> findByUsername(String username);
+    Optional<User> findById(Long id);
     boolean checkUserPermission(String username);  // Phương thức kiểm tra quyền hạn người dùng
     
     // New methods for authentication

@@ -261,23 +261,27 @@ function handleProfileUpdate(e) {
         return;
     }
     
-    // Update local storage
-    localStorage.setItem('dathang_user', JSON.stringify(updatedUserData));
-    
-    // Update user data variable
-    userData = updatedUserData;
-    
-    // Reload profile data
-    loadProfileData();
-    
-    // Hide edit form
-    hideEditForm();
-    
-    // Show success message
-    showSuccess('Thông tin tài khoản đã được cập nhật thành công!');
-    
     // Make an API call to update user information on server
-    updateUserInfo(updatedUserData);
+    updateUserInfo(updatedUserData)
+        .then(response => {
+            // Only update local storage after successful server update
+            localStorage.setItem('dathang_user', JSON.stringify(updatedUserData));
+            
+            // Update user data variable
+            userData = updatedUserData;
+            
+            // Reload profile data
+            loadProfileData();
+            
+            // Hide edit form
+            hideEditForm();
+            
+            // Show success message
+            showSuccess('Thông tin tài khoản đã được cập nhật thành công!');
+        })
+        .catch(error => {
+            showError('Không thể cập nhật thông tin: ' + error.message);
+        });
 }
 
 // Update user info on server

@@ -26,6 +26,11 @@ public class UserServiceImpl implements UserService {
         return userRepository.findByUsername(username);
     }
 
+    @Override
+    public Optional<User> findById(Long id) {
+        return userRepository.findById(id);
+    }
+
     // Kiểm tra quyền của người dùng, ví dụ kiểm tra nếu user có quyền đặt hàng
     @Override
     public boolean checkUserPermission(String username) {

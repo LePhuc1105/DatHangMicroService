@@ -211,4 +211,23 @@ public class UserController {
         // Call the regular update method
         return updateUserInfo(userInfoUpdate);
     }
+
+    // Endpoint mới để lấy username từ userId
+    @GetMapping("/id/{userId}")
+    public ResponseEntity<Map<String, Object>> getUserById(@PathVariable Long userId) {
+        Optional<User> userOptional = userService.findById(userId);
+        Map<String, Object> response = new HashMap<>();
+        
+        if (userOptional.isPresent()) {
+            User user = userOptional.get();
+            response.put("id", user.getId());
+            response.put("username", user.getUsername());
+            response.put("email", user.getEmail());
+            response.put("fullName", user.getFullName());
+            return ResponseEntity.ok(response);
+        } else {
+            response.put("error", "User not found");
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+        }
+    }
 }

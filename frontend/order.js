@@ -299,32 +299,13 @@ async function handleOrderSubmit() {
         
         // Match the order data structure with the database schema
         const orderData = {
-            userId: userData.id ? Number(userData.id) : 0,
+            userId: userData.id ? Number(userData.id) : 1,
             productId: Number(selectedProduct.id),
             quantity: Number(selectedQuantity),
             status: "PENDING"
         };
-        
         console.log('Order data being sent:', JSON.stringify(orderData));
-        
         try {
-            // First, try debug endpoint to verify JSON structure
-            console.log('Testing debug endpoint to verify JSON structure...');
-            const debugResponse = await window.fetchWithCORS('http://localhost:8081/orders/debug', {
-                method: 'POST',
-                headers: {
-                    'Accept': 'application/json',
-                    'Content-Type': 'application/json'
-                },
-                mode: 'cors',
-                body: JSON.stringify(orderData)
-            });
-            
-            const debugResult = await debugResponse.json();
-            console.log('Debug response:', debugResult);
-            
-            // Main order API call
-            console.log('Making API call to create order...');
             const response = await window.fetchWithCORS('http://localhost:8081/orders', {
                 method: 'POST',
                 headers: {

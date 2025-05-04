@@ -27,26 +27,12 @@ public class Order {
 
     private Integer quantity;
     
-    /**
-     * Trạng thái đơn hàng: 
-     * - PENDING: Đang chờ xử lý (mới tạo)
-     * - CONFIRMED: Đã xác nhận
-     * - SHIPPED: Đã gửi hàng
-     * - DELIVERED: Đã giao hàng
-     * - CANCELED: Đã hủy
-     */
     @Column(name = "status")
     private String status = "PENDING";
     
-    /**
-     * Thời gian tạo đơn hàng
-     */
     @Column(name = "created_at")
     private LocalDateTime createdAt = LocalDateTime.now();
-    
-    /**
-     * Thời gian cập nhật đơn hàng gần nhất
-     */
+   
     @Column(name = "updated_at")
     private LocalDateTime updatedAt = LocalDateTime.now();
 }

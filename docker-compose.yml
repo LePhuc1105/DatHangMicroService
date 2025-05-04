@@ -3,7 +3,7 @@ services:
   eureka-server:
     build:
       context: ./eureka-server
-    container_name: eureka-server-new
+    container_name: eureka-server
     ports:
       - "8761:8761"
     environment:
@@ -20,7 +20,7 @@ services:
     ports:
       - "8081:8081"
     environment:
-      - EUREKA_SERVER_URL=http://eureka-server-new:8761/eureka/
+      - EUREKA_SERVER_URL=http://eureka-server:8761/eureka/
       - SPRING_PROFILES_ACTIVE=docker
     depends_on:
       - eureka-server
@@ -33,11 +33,11 @@ services:
   user-service:
     build:
       context: ./user-service
-    container_name: user-service-new
+    container_name: user-service
     ports:
       - "8083:8083"
     environment:
-      - EUREKA_SERVER_URL=http://eureka-server-new:8761/eureka/
+      - EUREKA_SERVER_URL=http://eureka-server:8761/eureka/
       - SPRING_PROFILES_ACTIVE=docker
     depends_on:
       - eureka-server
@@ -54,7 +54,7 @@ services:
     ports:
       - "8082:8082"
     environment:
-      - EUREKA_SERVER_URL=http://eureka-server-new:8761/eureka/
+      - EUREKA_SERVER_URL=http://eureka-server:8761/eureka/
       - SPRING_PROFILES_ACTIVE=docker
     depends_on:
       - eureka-server

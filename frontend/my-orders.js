@@ -142,7 +142,7 @@ async function loadUserOrders() {
     
     try {
         // Gọi API lấy đơn hàng
-        const response = await fetch(`http://localhost:8083/orders/user/${userData.id}`, {
+        const response = await fetch(`http://localhost:8081/orders/user/${userData.id}`, {
             headers: {
                 'Authorization': `Bearer ${userData.token || ''}`
             }
