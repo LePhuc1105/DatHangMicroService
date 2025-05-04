@@ -92,8 +92,6 @@ async function fetchProducts() {
     try {
         showLoading();
         let products = [];
-        let apiWorked = false;
-        
         try {
             // Use fetchWithAuth instead of fetchWithCORS
             const response = await window.fetchWithAuth('http://localhost:8082/api/products/', {
@@ -107,7 +105,6 @@ async function fetchProducts() {
             
             if (response.ok) {
                 products = await response.json();
-                apiWorked = true;
                 console.log('Successfully fetched products from API:', products);
             } else {
                 console.error('Server responded with status:', response.status);
@@ -116,16 +113,6 @@ async function fetchProducts() {
             console.error('Direct API call failed:', error);
         }
         
-        // If direct API call failed, use placeholder data
-        if (!apiWorked) {
-            console.warn('Using placeholder products due to API issues');
-            products = getPlaceholderProducts();
-            showError(productErrorMessage, 'Không thể kết nối đến API, hiển thị dữ liệu mẫu');
-        } else {
-            hideError(productErrorMessage);
-        }
-        
-        // Display products regardless of source
         if (Array.isArray(products) && products.length > 0) {
         displayProducts(products);
             // Update product count
@@ -141,16 +128,6 @@ async function fetchProducts() {
             }
         }
     } catch (error) {
-        console.error('Error in fetchProducts:', error);
-        showError(productErrorMessage, 'Lỗi: ' + error.message);
-        
-        // Show placeholders as last resort
-        const placeholderProducts = getPlaceholderProducts();
-        displayProducts(placeholderProducts);
-        const productCount = document.getElementById('product-count');
-        if (productCount) {
-            productCount.textContent = placeholderProducts.length;
-        }
     } finally {
         hideLoading();
     }
@@ -163,17 +140,6 @@ function showLoading() {
 
 function hideLoading() {
     // Loading indicator will be replaced when products are displayed
-}
-
-// Get placeholder products
-function getPlaceholderProducts() {
-    return [
-        { id: 1, name: 'iPhone 13', description: 'Apple iPhone 13 128GB, Blue', price: 799.99, quantity: 50 },
-        { id: 2, name: 'Samsung Galaxy S21', description: 'Samsung Galaxy S21 5G 128GB, Phantom Black', price: 699.99, quantity: 40 },
-        { id: 3, name: 'MacBook Pro', description: 'Apple MacBook Pro 13-inch, M1 chip, 8GB RAM, 256GB SSD', price: 1299.99, quantity: 25 },
-        { id: 4, name: 'PlayStation 5', description: 'Sony PlayStation 5 Console', price: 499.99, quantity: 10 },
-        { id: 5, name: 'Nintendo Switch', description: 'Nintendo Switch Console with Neon Red/Blue Joy-Con', price: 299.99, quantity: 30 }
-    ];
 }
 
 // Display products in dropdown

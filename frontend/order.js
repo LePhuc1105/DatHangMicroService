@@ -72,24 +72,6 @@ async function loadProductDetails(productId) {
         displayProductDetails(product);
         
     } catch (error) {
-        console.error('Error fetching product details:', error);
-        
-        // Fallback to placeholder products for demo
-        const placeholderProducts = getPlaceholderProducts();
-        const product = placeholderProducts.find(p => p.id.toString() === productId);
-        
-        if (product) {
-            selectedProduct = product;
-            displayProductDetails(product);
-        } else {
-            showError(productErrorMessage, `Không thể tải thông tin sản phẩm: ${error.message}`);
-            productDetailsElement.innerHTML = `
-                <div class="text-center p-4">
-                    <i class="fas fa-exclamation-circle fa-3x mb-3 text-danger"></i>
-                    <p>Không tìm thấy sản phẩm. <a href="index.html">Quay lại trang chủ</a></p>
-                </div>
-            `;
-        }
     }
 }
 
@@ -433,15 +415,3 @@ function showSuccess(message) {
     successMessage.innerHTML = `<i class="fas fa-check-circle me-2"></i>${message}`;
     successMessage.classList.remove('d-none');
 }
-
-// Get placeholder products for demo
-function getPlaceholderProducts() {
-    return [
-        { id: 1, name: "Laptop Dell XPS 13", price: 25000000, quantity: 10, description: "Laptop cao cấp với màn hình 13 inch, Core i7" },
-        { id: 2, name: "Samsung Galaxy S21", price: 15000000, quantity: 15, description: "Điện thoại Samsung mới nhất với camera 108MP" },
-        { id: 3, name: "Tai nghe Sony WH-1000XM4", price: 8500000, quantity: 8, description: "Tai nghe chống ồn cao cấp" },
-        { id: 4, name: "Màn hình LG UltraGear", price: 12000000, quantity: 5, description: "Màn hình gaming 27 inch, 144Hz" },
-        { id: 5, name: "Apple iPad Pro 2021", price: 20000000, quantity: 7, description: "iPad Pro với chip M1 mạnh mẽ" },
-        { id: 6, name: "Bàn phím cơ Logitech G Pro", price: 3000000, quantity: 20, description: "Bàn phím cơ chuyên game" }
-    ];
-} 

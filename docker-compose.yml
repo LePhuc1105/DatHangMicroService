@@ -91,7 +91,7 @@ services:
       - app-network
     ports:
       - "3307:3306" # Đổi cổng host từ 3306 thành 3307
-    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci --init-file=/docker-entrypoint-initdb.d/init-databases.sql
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci --init-file=/docker-entrypoint-initdb.d/init-db.sql
 
 networks:
   app-network:

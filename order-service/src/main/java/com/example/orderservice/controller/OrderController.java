@@ -10,6 +10,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -119,5 +120,23 @@ public class OrderController {
         
         logger.info("Trả về thông tin đơn hàng: {}", orderId);
         return ResponseEntity.ok(order);
+    }
+
+    /**
+     * Lấy danh sách đơn hàng của người dùng
+     */
+    @GetMapping("/user/{userId}")
+    public ResponseEntity<Object> getUserOrders(@PathVariable Long userId) {
+        logger.info("Nhận yêu cầu lấy danh sách đơn hàng của người dùng: {}", userId);
+        
+        List<Order> orders = orderService.getOrdersByUserId(userId);
+        
+        if (orders.isEmpty()) {
+            logger.info("Không tìm thấy đơn hàng nào cho người dùng: {}", userId);
+            return ResponseEntity.ok(orders); // Return empty array
+        }
+        
+        logger.info("Trả về {} đơn hàng của người dùng: {}", orders.size(), userId);
+        return ResponseEntity.ok(orders);
     }
 }

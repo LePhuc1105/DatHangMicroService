@@ -242,4 +242,12 @@ window.fetchWithAuth = async function(url, options = {}) {
         options.headers['Authorization'] = token;
     }
     return fetch(url, options);
-}; 
+};
+
+// Kiểm tra đăng nhập
+function checkAuthentication() {
+    const userData = localStorage.getItem('dathang_user');
+    if (!userData) {
+        window.location.href = 'login.html?redirect=' + encodeURIComponent(window.location.pathname);
+    }
+} 

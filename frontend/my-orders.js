@@ -27,20 +27,20 @@ document.addEventListener('DOMContentLoaded', () => {
     orderDetailModal = new bootstrap.Modal(orderDetailModalElement);
     
     // Check if user is logged in
-    checkAuth();
+    checkAuthentication();
     
     // Load user profile data
-    loadProfileData();
+    loadUserProfile();
     
     // Fetch orders
-    fetchOrders();
+    loadUserOrders();
     
     // Setup event listeners
     setupEventListeners();
 });
 
 // Check authentication
-function checkAuth() {
+function checkAuthentication() {
     const savedUserData = localStorage.getItem('dathang_user');
     
     if (!savedUserData) {
@@ -57,7 +57,7 @@ function checkAuth() {
 }
 
 // Load profile data
-function loadProfileData() {
+function loadUserProfile() {
     if (!userData) return;
     
     // Always use fullName for all displays, with fallback to username only if necessary
@@ -75,7 +75,7 @@ function loadProfileData() {
 function setupEventListeners() {
     // Refresh orders button
     if (refreshOrdersButton) {
-        refreshOrdersButton.addEventListener('click', fetchOrders);
+        refreshOrdersButton.addEventListener('click', loadUserOrders);
     }
     
     // Search orders
@@ -128,8 +128,7 @@ function applySearchAndFilter(searchTerm, status) {
     if (searchTerm) {
         filteredOrders = filteredOrders.filter(order => 
             order.id.toString().includes(searchTerm) ||
-            order.customerName.toLowerCase().includes(searchTerm) ||
-            (order.productName && order.productName.toLowerCase().includes(searchTerm))
+            (order.productId && order.productId.toString().includes(searchTerm))
         );
     }
     
@@ -138,37 +137,30 @@ function applySearchAndFilter(searchTerm, status) {
 }
 
 // Fetch orders
-async function fetchOrders() {
+async function loadUserOrders() {
     showLoading();
     
     try {
-        // In real implementation, you would fetch from API
-        /*
-        const response = await window.fetchWithAuth(`http://localhost:8081/orders/user/${userData.id}`, {
-            method: 'GET',
+        // Gọi API lấy đơn hàng
+        const response = await fetch(`http://localhost:8083/orders/user/${userData.id}`, {
             headers: {
-                'Accept': 'application/json'
+                'Authorization': `Bearer ${userData.token || ''}`
             }
         });
+
+        console.log({response})
         
         if (!response.ok) {
-            throw new Error(`Error fetching orders: ${response.status}`);
+            throw new Error('Không thể tải đơn hàng');
         }
         
         allOrders = await response.json();
-        */
+        filteredOrders = [...allOrders];
+        currentFilter = 'all';
         
-        // For demo, simulate API response with dummy data
-        setTimeout(() => {
-            allOrders = getDummyOrders();
-            filteredOrders = [...allOrders];
-            currentFilter = 'all';
-            
-            displayOrders(allOrders);
-        }, 1000);
-        
+        displayOrders(allOrders);
     } catch (error) {
-        console.error('Error fetching orders:', error);
+        console.error('Error loading orders:', error);
         ordersListElement.innerHTML = `
             <div class="alert alert-danger">
                 <i class="fas fa-exclamation-circle me-2"></i>
@@ -202,13 +194,12 @@ function displayOrders(orders) {
                 <div class="row mb-2">
                     <div class="col-md-6">
                         <p class="mb-1"><strong>Ngày đặt:</strong> ${formatDate(order.createdAt)}</p>
-                        <p class="mb-1"><strong>Sản phẩm:</strong> ${order.productName || 'Không có thông tin'}</p>
+                        <p class="mb-1"><strong>Sản phẩm ID:</strong> ${order.productId}</p>
                         <p class="mb-0"><strong>Số lượng:</strong> ${order.quantity}</p>
                     </div>
                     <div class="col-md-6">
-                        <p class="mb-1"><strong>Đơn giá:</strong> ${formatPrice(order.unitPrice)} VND</p>
-                        <p class="mb-1"><strong>Tổng tiền:</strong> ${formatPrice(order.totalAmount)} VND</p>
-                        <p class="mb-0"><strong>Địa chỉ:</strong> ${order.customerAddress}</p>
+                        <p class="mb-1"><strong>Người dùng ID:</strong> ${order.userId}</p>
+                        <p class="mb-0"><strong>Cập nhật:</strong> ${formatDate(order.updatedAt)}</p>
                     </div>
                 </div>
                 <button class="btn btn-sm btn-outline-primary mt-2 view-details-btn" data-order-id="${order.id}">
@@ -250,23 +241,16 @@ function showOrderDetails(orderId) {
                 <span class="badge ${getStatusBadgeClass(order.status)}">${getStatusText(order.status)}</span>
             </div>
             
-            <div class="row mb-4">
-                <div class="col-md-6">
-                    <h6 class="mb-3">Thông tin đơn hàng</h6>
+            <div class="card mb-3">
+                <div class="card-header">
+                    <h6 class="mb-0">Thông tin đơn hàng</h6>
+                </div>
+                <div class="card-body">
                     <ul class="list-unstyled">
                         <li class="mb-2"><i class="fas fa-calendar me-2"></i> <strong>Ngày đặt:</strong> ${formatDate(order.createdAt)}</li>
                         <li class="mb-2"><i class="fas fa-clock me-2"></i> <strong>Cập nhật:</strong> ${formatDate(order.updatedAt)}</li>
                         <li class="mb-2"><i class="fas fa-tag me-2"></i> <strong>Trạng thái:</strong> ${getStatusText(order.status)}</li>
-                        <li class="mb-2"><i class="fas fa-money-bill-wave me-2"></i> <strong>Tổng tiền:</strong> ${formatPrice(order.totalAmount)} VND</li>
-                    </ul>
-                </div>
-                <div class="col-md-6">
-                    <h6 class="mb-3">Thông tin người nhận</h6>
-                    <ul class="list-unstyled">
-                        <li class="mb-2"><i class="fas fa-user me-2"></i> <strong>Họ tên:</strong> ${order.customerName}</li>
-                        <li class="mb-2"><i class="fas fa-envelope me-2"></i> <strong>Email:</strong> ${order.customerEmail}</li>
-                        <li class="mb-2"><i class="fas fa-phone me-2"></i> <strong>Điện thoại:</strong> ${order.customerPhone}</li>
-                        <li class="mb-2"><i class="fas fa-map-marker-alt me-2"></i> <strong>Địa chỉ:</strong> ${order.customerAddress}</li>
+                        <li class="mb-2"><i class="fas fa-user me-2"></i> <strong>ID Người dùng:</strong> ${order.userId}</li>
                     </ul>
                 </div>
             </div>
@@ -281,41 +265,13 @@ function showOrderDetails(orderId) {
                             <i class="fas fa-box fa-2x text-primary"></i>
                         </div>
                         <div class="flex-grow-1">
-                            <h6 class="mb-1">${order.productName || 'Không có thông tin sản phẩm'}</h6>
-                            <div class="d-flex justify-content-between align-items-center">
-                                <div>
-                                    <p class="mb-0 text-muted small">Đơn giá: ${formatPrice(order.unitPrice)} VND × ${order.quantity} = ${formatPrice(order.totalAmount)} VND</p>
-                                </div>
-                                <div>
-                                    <span class="badge bg-secondary">${order.quantity} sản phẩm</span>
-                                </div>
+                            <h6 class="mb-1">ID Sản phẩm: ${order.productId}</h6>
+                            <div>
+                                <span class="badge bg-secondary">${order.quantity} sản phẩm</span>
                             </div>
                         </div>
                     </div>
                 </div>
-            </div>
-            
-            ${order.notes ? `
-            <div class="card mb-3">
-                <div class="card-header">
-                    <h6 class="mb-0">Ghi chú</h6>
-                </div>
-                <div class="card-body">
-                    <p class="mb-0">${order.notes}</p>
-                </div>
-            </div>
-            ` : ''}
-            
-            <div class="timeline mb-4">
-                <h6 class="mb-3">Lịch sử đơn hàng</h6>
-                <div class="timeline-item">
-                    <div class="timeline-marker bg-success"></div>
-                    <div class="timeline-content">
-                        <h6 class="mb-0">Đơn hàng đã được tạo</h6>
-                        <p class="mb-0 text-muted small">${formatDate(order.createdAt)}</p>
-                    </div>
-                </div>
-                ${getOrderTimeline(order)}
             </div>
         </div>
     `;
@@ -417,97 +373,6 @@ function getOrderTimeline(order) {
     }
     
     return timeline;
-}
-
-// Get dummy orders for demo
-function getDummyOrders() {
-    // Use current user from localStorage with fullName preferred over username
-    const customerName = userData.fullName || userData.username || 'Người dùng';
-    const userEmail = userData.email || 'user@example.com';
-    const userPhone = userData.phone || '0123456789';
-    const userAddress = userData.address || 'Hà Nội, Việt Nam';
-    
-    // Create dummy orders with different statuses
-    return [
-        {
-            id: 10005,
-            customerName: customerName,
-            customerEmail: userEmail,
-            customerPhone: userPhone,
-            customerAddress: userAddress,
-            productId: 1,
-            productName: 'Laptop Dell XPS 13',
-            quantity: 1,
-            unitPrice: 25000000,
-            totalAmount: 25000000,
-            status: 'DELIVERED',
-            createdAt: '2023-11-25T10:30:00',
-            updatedAt: '2023-11-28T15:20:00',
-            notes: 'Giao hàng trong giờ hành chính'
-        },
-        {
-            id: 10006,
-            customerName: customerName,
-            customerEmail: userEmail,
-            customerPhone: userPhone,
-            customerAddress: userAddress,
-            productId: 3,
-            productName: 'Tai nghe Sony WH-1000XM4',
-            quantity: 2,
-            unitPrice: 8500000,
-            totalAmount: 17000000,
-            status: 'SHIPPED',
-            createdAt: '2023-12-01T14:45:00',
-            updatedAt: '2023-12-02T09:15:00',
-            notes: 'Đóng gói cẩn thận'
-        },
-        {
-            id: 10007,
-            customerName: customerName,
-            customerEmail: userEmail,
-            customerPhone: userPhone,
-            customerAddress: userAddress,
-            productId: 6,
-            productName: 'Bàn phím cơ Logitech G Pro',
-            quantity: 1,
-            unitPrice: 3000000,
-            totalAmount: 3000000,
-            status: 'CONFIRMED',
-            createdAt: '2023-12-04T16:20:00',
-            updatedAt: '2023-12-04T16:45:00'
-        },
-        {
-            id: 10008,
-            customerName: customerName,
-            customerEmail: userEmail,
-            customerPhone: userPhone,
-            customerAddress: userAddress,
-            productId: 2,
-            productName: 'Samsung Galaxy S21',
-            quantity: 1,
-            unitPrice: 15000000,
-            totalAmount: 15000000,
-            status: 'PENDING',
-            createdAt: '2023-12-05T11:10:00',
-            updatedAt: '2023-12-05T11:10:00'
-        },
-        {
-            id: 10004,
-            customerName: customerName,
-            customerEmail: userEmail,
-            customerPhone: userPhone,
-            customerAddress: userAddress,
-            productId: 4,
-            productName: 'Màn hình LG UltraGear',
-            quantity: 1,
-            unitPrice: 12000000,
-            totalAmount: 12000000,
-            status: 'CANCELED',
-            createdAt: '2023-11-20T09:15:00',
-            updatedAt: '2023-11-20T14:30:00',
-            notes: 'Sản phẩm đã hết hàng'
-        }
-    ];
 }
 
 // Add some CSS for timeline
