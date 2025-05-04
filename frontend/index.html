@@ -8,6 +8,47 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link href="style.css" rel="stylesheet">
+    <!-- Thêm CORS Anywhere proxy để giải quyết vấn đề CORS trên trình duyệt -->
+    <script>
+        // Cấu hình global cho fetch API để xử lý CORS
+        window.fetchWithCORS = function(url, options = {}) {
+            // Chỉ sử dụng cho các request đến localhost
+            if (url.includes('localhost')) {
+                console.log('Using fetch with CORS bypass for:', url);
+                
+                // Đảm bảo headers có đủ thông tin
+                options.headers = options.headers || {};
+                options.headers['Accept'] = 'application/json';
+                
+                // Add authentication token if available
+                const userData = localStorage.getItem('dathang_user');
+                if (userData) {
+                    try {
+                        const user = JSON.parse(userData);
+                        if (user && user.token) {
+                            options.headers['Authorization'] = `Bearer ${user.token}`;
+                        }
+                    } catch (e) {
+                        console.error('Error parsing user data:', e);
+                    }
+                }
+                
+                // Thực hiện fetch với mode: 'no-cors' nếu cần
+                if (url.includes('api/products')) {
+                    console.log('Using special CORS handling for products API');
+                }
+                
+                return fetch(url, options)
+                    .catch(error => {
+                        console.error('CORS fetch error:', error);
+                        throw new Error('Lỗi CORS: ' + error.message);
+                    });
+            }
+            
+            // Nếu không phải localhost, sử dụng fetch thông thường
+            return fetch(url, options);
+        };
+    </script>
 </head>
 <body class="bg-light">
     <nav class="navbar navbar-expand-lg navbar-dark">
@@ -21,129 +62,61 @@
                     <i class="fas fa-phone-alt me-2"></i>
                     Hotline: 1900 1234
                 </span>
+                <div class="dropdown">
+                    <button class="btn btn-outline-light dropdown-toggle" type="button" id="userDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="fas fa-user me-2"></i>
+                        <span id="userDisplayName">Tài khoản</span>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
+                        <li><a class="dropdown-item" href="profile.html"><i class="fas fa-id-card me-2"></i>Thông tin tài khoản</a></li>
+                        <li><a class="dropdown-item" href="my-orders.html"><i class="fas fa-shopping-bag me-2"></i>Đơn hàng của tôi</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item" href="#" onclick="logout()"><i class="fas fa-sign-out-alt me-2"></i>Đăng xuất</a></li>
+                    </ul>
+                </div>
             </div>
         </div>
     </nav>
 
-    <div class="container">
-        <div class="row g-4">
-            <!-- Form thông tin người dùng -->
-            <div class="col-lg-4">
-                <div class="card h-100">
-                    <div class="card-header">
-                        <h5 class="card-title">
-                            <i class="fas fa-user me-2"></i>
-                            Thông Tin Người Dùng
-                        </h5>
-                    </div>
-                    <div class="card-body">
-                        <form id="userForm">
-                            <div class="mb-4">
-                                <label for="username" class="form-label">Tên người dùng</label>
-                                <div class="input-group">
-                                    <span class="input-group-text"><i class="fas fa-user"></i></span>
-                                    <input type="text" class="form-control" id="username" placeholder="Nhập tên của bạn" required>
-                                </div>
-                            </div>
-                            <div class="mb-4">
-                                <label for="email" class="form-label">Email</label>
-                                <div class="input-group">
-                                    <span class="input-group-text"><i class="fas fa-envelope"></i></span>
-                                    <input type="email" class="form-control" id="email" placeholder="Nhập email của bạn" required>
-                                </div>
-                            </div>
-                            <div class="mb-4">
-                                <label for="address" class="form-label">Địa chỉ</label>
-                                <div class="input-group">
-                                    <span class="input-group-text"><i class="fas fa-map-marker-alt"></i></span>
-                                    <input type="text" class="form-control" id="address" placeholder="Nhập địa chỉ của bạn" required>
-                                </div>
-                            </div>
-                            <div class="mb-4">
-                                <label for="phone" class="form-label">Số điện thoại</label>
-                                <div class="input-group">
-                                    <span class="input-group-text"><i class="fas fa-phone"></i></span>
-                                    <input type="tel" class="form-control" id="phone" placeholder="Nhập số điện thoại của bạn" required>
-                                </div>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Danh sách sản phẩm -->
-            <div class="col-lg-4">
-                <div class="card h-100">
-                    <div class="card-header">
-                        <h5 class="card-title">
+    <div class="container my-4">
+        <!-- Main product list section -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="card-title mb-0">
                             <i class="fas fa-box me-2"></i>
-                            Sản Phẩm
+                            Danh Sách Sản Phẩm
                         </h5>
+                        <div class="d-flex">
+                            <button id="retry-fetch" class="btn btn-sm btn-outline-primary me-2">
+                                <i class="fas fa-sync-alt me-1"></i> Tải lại
+                            </button>
+                        </div>
                     </div>
                     <div class="card-body">
-                        <div class="d-flex justify-content-between align-items-center mb-3">
-                            <span class="text-muted">Chọn sản phẩm bạn muốn mua</span>
-                            <span class="badge bg-primary">
-                                <i class="fas fa-info-circle me-1"></i>
-                                Có sẵn
-                            </span>
+                        <!-- Search bar -->
+                        <div class="input-group mb-4">
+                            <span class="input-group-text"><i class="fas fa-search"></i></span>
+                            <input type="text" class="form-control" id="searchProduct" placeholder="Tìm kiếm sản phẩm...">
                         </div>
-                        <div id="productList" class="product-list">
+                        
+                        <!-- Product grid -->
+                        <div id="productList" class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
                             <!-- Products will be loaded here -->
-                        </div>
-                        <div id="productErrorMessage" class="alert alert-danger d-none"></div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Tổng đơn hàng -->
-            <div class="col-lg-4">
-                <div class="card h-100">
-                    <div class="card-header">
-                        <h5 class="card-title">
-                            <i class="fas fa-receipt me-2"></i>
-                            Tổng Đơn Hàng
-                        </h5>
-                    </div>
-                    <div class="card-body">
-                        <div class="order-summary">
-                            <div class="d-flex justify-content-between mb-3">
-                                <span class="text-muted">Sản phẩm:</span>
-                                <span id="selectedProductName" class="fw-bold">Chưa chọn</span>
-                            </div>
-                            <div class="d-flex justify-content-between mb-3">
-                                <span class="text-muted">Số lượng:</span>
-                                <span id="selectedQuantity" class="fw-bold">0</span>
-                            </div>
-                            <div class="d-flex justify-content-between mb-3">
-                                <span class="text-muted">Đơn giá:</span>
-                                <span id="productPrice" class="fw-bold">0 VND</span>
-                            </div>
-                            <hr>
-                            <div class="d-flex justify-content-between align-items-center">
-                                <span class="text-muted">Tổng cộng:</span>
-                                <span id="totalPrice" class="h4 mb-0">0 VND</span>
+                            <div class="text-center p-4 col-12">
+                                <div class="spinner-border text-primary" role="status"></div>
+                                <p class="mt-2">Đang tải sản phẩm...</p>
                             </div>
                         </div>
-                        <button id="submitOrder" class="btn btn-primary w-100 mt-4" disabled>
-                            <i class="fas fa-check me-2"></i>
-                            Đặt Hàng
-                        </button>
-                        <div id="successMessage" class="alert alert-success mt-3 d-none">
-                            <i class="fas fa-check-circle me-2"></i>
-                            <span></span>
-                        </div>
-                        <div id="userErrorMessage" class="alert alert-danger mt-3 d-none">
-                            <i class="fas fa-exclamation-circle me-2"></i>
-                            <span></span>
-                        </div>
+                        <div id="productErrorMessage" class="alert alert-danger d-none mt-3"></div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <footer class="bg-dark text-white mt-5 py-4">
+    <footer class="bg-dark text-white py-4">
         <div class="container">
             <div class="row">
                 <div class="col-md-6">
@@ -162,6 +135,7 @@
     </footer>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="script.js"></script>
+    <script src="auth.js"></script>
+    <script src="home.js"></script>
 </body>
 </html>

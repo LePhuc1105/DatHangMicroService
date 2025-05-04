@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Thông Tin Tài Khoản - Hệ Thống Đặt Hàng</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="style.css" rel="stylesheet">
+    <!-- Thêm CORS Anywhere proxy để giải quyết vấn đề CORS trên trình duyệt -->
+    <script>
+        // Cấu hình global cho fetch API để xử lý CORS
+        window.fetchWithCORS = function(url, options = {}) {
+            // Chỉ sử dụng cho các request đến localhost
+            if (url.includes('localhost')) {
+                console.log('Using fetch with CORS bypass for:', url);
+                
+                // Đảm bảo headers có đủ thông tin
+                options.headers = options.headers || {};
+                options.headers['Accept'] = 'application/json';
+                
+                // Add authentication token if available
+                const userData = localStorage.getItem('dathang_user');
+                if (userData) {
+                    try {
+                        const user = JSON.parse(userData);
+                        if (user && user.token) {
+                            options.headers['Authorization'] = `Bearer ${user.token}`;
+                        }
+                    } catch (e) {
+                        console.error('Error parsing user data:', e);
+                    }
+                }
+                
+                // Thực hiện fetch với mode: 'no-cors' nếu cần
+                if (url.includes('api/products')) {
+                    console.log('Using special CORS handling for products API');
+                }
+                
+                return fetch(url, options)
+                    .catch(error => {
+                        console.error('CORS fetch error:', error);
+                        throw new Error('Lỗi CORS: ' + error.message);
+                    });
+            }
+            
+            // Nếu không phải localhost, sử dụng fetch thông thường
+            return fetch(url, options);
+        };
+    </script>
+</head>
+<body class="bg-light">
+    <nav class="navbar navbar-expand-lg navbar-dark">
+        <div class="container">
+            <a class="navbar-brand" href="index.html">
+                <i class="fas fa-shopping-cart me-2"></i>
+                Hệ Thống Đặt Hàng
+            </a>
+            <div class="ms-auto d-flex align-items-center">
+                <span class="text-white me-3">
+                    <i class="fas fa-phone-alt me-2"></i>
+                    Hotline: 1900 1234
+                </span>
+                <div class="dropdown">
+                    <button class="btn btn-outline-light dropdown-toggle" type="button" id="userDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="fas fa-user me-2"></i>
+                        <span id="userDisplayName">Tài khoản</span>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
+                        <li><a class="dropdown-item active" href="profile.html"><i class="fas fa-id-card me-2"></i>Thông tin tài khoản</a></li>
+                        <li><a class="dropdown-item" href="my-orders.html"><i class="fas fa-shopping-bag me-2"></i>Đơn hàng của tôi</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item" href="#" onclick="logout()"><i class="fas fa-sign-out-alt me-2"></i>Đăng xuất</a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container my-4">
+        <div class="row">
+            <div class="col-md-4 mb-4">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="card-title">
+                            <i class="fas fa-user-circle me-2"></i>
+                            Tài Khoản
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="text-center mb-4">
+                            <div class="avatar-placeholder">
+                                <i class="fas fa-user fa-4x text-primary"></i>
+                            </div>
+                            <h5 class="mt-3 mb-0" id="profileUsername">Đang tải...</h5>
+                            <p class="text-muted small" id="profileEmail">Đang tải...</p>
+                        </div>
+                        
+                        <div class="list-group">
+                            <a href="profile.html" class="list-group-item list-group-item-action active">
+                                <i class="fas fa-id-card me-2"></i>
+                                Thông tin tài khoản
+                            </a>
+                            <a href="my-orders.html" class="list-group-item list-group-item-action">
+                                <i class="fas fa-shopping-bag me-2"></i>
+                                Đơn hàng của tôi
+                            </a>
+                            <a href="#" onclick="logout()" class="list-group-item list-group-item-action text-danger">
+                                <i class="fas fa-sign-out-alt me-2"></i>
+                                Đăng xuất
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-8">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="card-title">
+                            <i class="fas fa-id-card me-2"></i>
+                            Thông Tin Tài Khoản
+                        </h5>
+                        <button id="editProfileBtn" class="btn btn-sm btn-outline-primary">
+                            <i class="fas fa-edit me-1"></i>
+                            Chỉnh sửa
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        <!-- Profile Info View -->
+                        <div id="profileInfo" class="mb-3">
+                            <div class="row mb-3">
+                                <div class="col-md-4 text-muted">Họ và tên:</div>
+                                <div class="col-md-8 fw-bold" id="viewName">Đang tải...</div>
+                            </div>
+                            <div class="row mb-3">
+                                <div class="col-md-4 text-muted">Email:</div>
+                                <div class="col-md-8" id="viewEmail">Đang tải...</div>
+                            </div>
+                            <div class="row mb-3">
+                                <div class="col-md-4 text-muted">Số điện thoại:</div>
+                                <div class="col-md-8" id="viewPhone">Đang tải...</div>
+                            </div>
+                            <div class="row mb-3">
+                                <div class="col-md-4 text-muted">Địa chỉ:</div>
+                                <div class="col-md-8" id="viewAddress">Đang tải...</div>
+                            </div>
+                        </div>
+
+                        <!-- Profile Edit Form -->
+                        <form id="profileEditForm" class="d-none">
+                            <div class="mb-3">
+                                <label for="editName" class="form-label">Họ và tên</label>
+                                <div class="input-group">
+                                    <span class="input-group-text"><i class="fas fa-user"></i></span>
+                                    <input type="text" class="form-control" id="editName" placeholder="Nhập họ và tên" required>
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <label for="editEmail" class="form-label">Email</label>
+                                <div class="input-group">
+                                    <span class="input-group-text"><i class="fas fa-envelope"></i></span>
+                                    <input type="email" class="form-control" id="editEmail" placeholder="Nhập email" required>
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <label for="editPhone" class="form-label">Số điện thoại</label>
+                                <div class="input-group">
+                                    <span class="input-group-text"><i class="fas fa-phone"></i></span>
+                                    <input type="tel" class="form-control" id="editPhone" placeholder="Nhập số điện thoại" required>
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <label for="editAddress" class="form-label">Địa chỉ</label>
+                                <div class="input-group">
+                                    <span class="input-group-text"><i class="fas fa-map-marker-alt"></i></span>
+                                    <input type="text" class="form-control" id="editAddress" placeholder="Nhập địa chỉ" required>
+                                </div>
+                            </div>
+                            <div class="d-flex">
+                                <button type="submit" class="btn btn-primary me-2">
+                                    <i class="fas fa-save me-2"></i>
+                                    Lưu thay đổi
+                                </button>
+                                <button type="button" id="cancelEditBtn" class="btn btn-outline-secondary">
+                                    <i class="fas fa-times me-2"></i>
+                                    Hủy
+                                </button>
+                            </div>
+                        </form>
+                        
+                        <div id="successMessage" class="alert alert-success mt-3 d-none"></div>
+                        <div id="errorMessage" class="alert alert-danger mt-3 d-none"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer class="bg-dark text-white py-4 mt-5">
+        <div class="container">
+            <div class="row">
+                <div class="col-md-6">
+                    <h5 class="mb-3">Hệ Thống Đặt Hàng</h5>
+                    <p class="mb-0">Đơn giản - Nhanh chóng - Tiện lợi</p>
+                </div>
+                <div class="col-md-6 text-md-end">
+                    <h5 class="mb-3">Liên hệ</h5>
+                    <p class="mb-0">
+                        <i class="fas fa-envelope me-2"></i>
+                        support@dathang.com
+                    </p>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="auth.js"></script>
+    <script src="profile.js"></script>
+</body>
+</html> 

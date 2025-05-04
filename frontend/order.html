@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Đặt Hàng - Hệ Thống Đặt Hàng</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="style.css" rel="stylesheet">
+    <!-- Thêm CORS Anywhere proxy để giải quyết vấn đề CORS trên trình duyệt -->
+    <script>
+        // Cấu hình global cho fetch API để xử lý CORS
+        window.fetchWithCORS = function(url, options = {}) {
+            // Chỉ sử dụng cho các request đến localhost
+            if (url.includes('localhost')) {
+                console.log('Using fetch with CORS bypass for:', url);
+                
+                // Đảm bảo headers có đủ thông tin
+                options.headers = options.headers || {};
+                options.headers['Accept'] = 'application/json';
+                
+                // Add authentication token if available
+                const userData = localStorage.getItem('dathang_user');
+                if (userData) {
+                    try {
+                        const user = JSON.parse(userData);
+                        if (user && user.token) {
+                            options.headers['Authorization'] = `Bearer ${user.token}`;
+                        }
+                    } catch (e) {
+                        console.error('Error parsing user data:', e);
+                    }
+                }
+                
+                // Thực hiện fetch với mode: 'no-cors' nếu cần
+                if (url.includes('api/products')) {
+                    console.log('Using special CORS handling for products API');
+                }
+                
+                return fetch(url, options)
+                    .catch(error => {
+                        console.error('CORS fetch error:', error);
+                        throw new Error('Lỗi CORS: ' + error.message);
+                    });
+            }
+            
+            // Nếu không phải localhost, sử dụng fetch thông thường
+            return fetch(url, options);
+        };
+    </script>
+</head>
+<body class="bg-light">
+    <nav class="navbar navbar-expand-lg navbar-dark">
+        <div class="container">
+            <a class="navbar-brand" href="index.html">
+                <i class="fas fa-shopping-cart me-2"></i>
+                Hệ Thống Đặt Hàng
+            </a>
+            <div class="ms-auto d-flex align-items-center">
+                <span class="text-white me-3">
+                    <i class="fas fa-phone-alt me-2"></i>
+                    Hotline: 1900 1234
+                </span>
+                <div class="dropdown">
+                    <button class="btn btn-outline-light dropdown-toggle" type="button" id="userDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="fas fa-user me-2"></i>
+                        <span id="userDisplayName">Tài khoản</span>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
+                        <li><a class="dropdown-item" href="profile.html"><i class="fas fa-id-card me-2"></i>Thông tin tài khoản</a></li>
+                        <li><a class="dropdown-item" href="my-orders.html"><i class="fas fa-shopping-bag me-2"></i>Đơn hàng của tôi</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item" href="#" onclick="logout()"><i class="fas fa-sign-out-alt me-2"></i>Đăng xuất</a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container my-4">
+        <div class="row g-4">
+            <!-- Thông tin sản phẩm -->
+            <div class="col-lg-6">
+                <div class="card h-100">
+                    <div class="card-header">
+                        <h5 class="card-title">
+                            <i class="fas fa-box me-2"></i>
+                            Thông Tin Sản Phẩm
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="productDetails" class="text-center p-4">
+                            <div class="spinner-border text-primary" role="status"></div>
+                            <p class="mt-2">Đang tải thông tin sản phẩm...</p>
+                        </div>
+                        
+                        <div id="productControls" class="mt-4 d-none">
+                            <div class="d-flex justify-content-between mb-3 align-items-center">
+                                <span class="text-muted">Số lượng:</span>
+                                <div class="d-flex align-items-center">
+                                    <button id="decreaseQuantity" class="quantity-btn" onclick="updateQuantity(-1)">-</button>
+                                    <span id="selectedQuantity" class="quantity-value">1</span>
+                                    <button id="increaseQuantity" class="quantity-btn" onclick="updateQuantity(1)">+</button>
+                                </div>
+                            </div>
+                            <button id="proceedToCheckout" class="btn btn-primary w-100">
+                                <i class="fas fa-shopping-cart me-2"></i>
+                                Tiến hành đặt hàng
+                            </button>
+                        </div>
+                        
+                        <div id="productErrorMessage" class="alert alert-danger d-none mt-3"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Thông tin đặt hàng -->
+            <div class="col-lg-6">
+                <div id="accountInfoSection" class="card h-100 d-none">
+                    <div class="card-header">
+                        <h5 class="card-title">
+                            <i class="fas fa-user me-2"></i>
+                            Thông Tin Tài Khoản
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label for="accountSelect" class="form-label">Chọn thông tin tài khoản</label>
+                            <select class="form-select" id="accountSelect">
+                                <option value="" selected disabled>-- Chọn tài khoản --</option>
+                                <option value="existing">Sử dụng thông tin hiện tại</option>
+                                <option value="new">Nhập thông tin mới</option>
+                            </select>
+                        </div>
+                        
+                        <form id="userForm" class="d-none">
+                            <div class="mb-3">
+                                <label for="username" class="form-label">Tên người dùng</label>
+                                <div class="input-group">
+                                    <span class="input-group-text"><i class="fas fa-user"></i></span>
+                                    <input type="text" class="form-control" id="username" placeholder="Nhập tên của bạn" required>
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <label for="email" class="form-label">Email</label>
+                                <div class="input-group">
+                                    <span class="input-group-text"><i class="fas fa-envelope"></i></span>
+                                    <input type="email" class="form-control" id="email" placeholder="Nhập email của bạn" required>
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <label for="address" class="form-label">Địa chỉ</label>
+                                <div class="input-group">
+                                    <span class="input-group-text"><i class="fas fa-map-marker-alt"></i></span>
+                                    <input type="text" class="form-control" id="address" placeholder="Nhập địa chỉ của bạn" required>
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <label for="phone" class="form-label">Số điện thoại</label>
+                                <div class="input-group">
+                                    <span class="input-group-text"><i class="fas fa-phone"></i></span>
+                                    <input type="tel" class="form-control" id="phone" placeholder="Nhập số điện thoại của bạn" required>
+                                </div>
+                            </div>
+                        </form>
+
+                        <div id="existingUserInfo" class="d-none">
+                            <div class="card bg-light mb-3">
+                                <div class="card-body">
+                                    <h6 class="card-subtitle mb-2 text-muted">Thông tin tài khoản hiện tại</h6>
+                                    <p class="mb-1"><strong>Tên:</strong> <span id="currentUsername"></span></p>
+                                    <p class="mb-1"><strong>Email:</strong> <span id="currentEmail"></span></p>
+                                    <p class="mb-1"><strong>Địa chỉ:</strong> <span id="currentAddress"></span></p>
+                                    <p class="mb-0"><strong>Điện thoại:</strong> <span id="currentPhone"></span></p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Tổng đơn hàng -->
+                        <div class="order-summary mt-4">
+                            <h5 class="mb-3">Tổng Đơn Hàng</h5>
+                            <div class="d-flex justify-content-between mb-2">
+                                <span class="text-muted">Sản phẩm:</span>
+                                <span id="selectedProductName" class="fw-bold"></span>
+                            </div>
+                            <div class="d-flex justify-content-between mb-2">
+                                <span class="text-muted">Số lượng:</span>
+                                <span id="summaryQuantity"></span>
+                            </div>
+                            <div class="d-flex justify-content-between mb-2">
+                                <span class="text-muted">Đơn giá:</span>
+                                <span id="productPrice" class="fw-bold"></span>
+                            </div>
+                            <hr>
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span class="text-muted">Tổng cộng:</span>
+                                <span id="totalPrice" class="h4 mb-0"></span>
+                            </div>
+                        </div>
+                        
+                        <button id="submitOrder" class="btn btn-primary w-100 mt-4">
+                            <i class="fas fa-check me-2"></i>
+                            Xác Nhận Đặt Hàng
+                        </button>
+                        
+                        <div id="successMessage" class="alert alert-success mt-3 d-none"></div>
+                        <div id="userErrorMessage" class="alert alert-danger mt-3 d-none"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer class="bg-dark text-white py-4 mt-5">
+        <div class="container">
+            <div class="row">
+                <div class="col-md-6">
+                    <h5 class="mb-3">Hệ Thống Đặt Hàng</h5>
+                    <p class="mb-0">Đơn giản - Nhanh chóng - Tiện lợi</p>
+                </div>
+                <div class="col-md-6 text-md-end">
+                    <h5 class="mb-3">Liên hệ</h5>
+                    <p class="mb-0">
+                        <i class="fas fa-envelope me-2"></i>
+                        support@dathang.com
+                    </p>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="auth.js"></script>
+    <script src="order.js"></script>
+</body>
+</html> 

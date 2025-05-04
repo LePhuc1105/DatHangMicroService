@@ -82,8 +82,8 @@ services:
     environment:
       - MYSQL_ROOT_PASSWORD=123456
       - MYSQL_DATABASE=order_db
-      - MYSQL_DATABASE_USER=user_db
-      - MYSQL_DATABASE_PRODUCT=product_db
+      - MYSQL_USER=root
+      - MYSQL_PASSWORD=123456
     volumes:
       - mysql-data:/var/lib/mysql
       - ./init-scripts:/docker-entrypoint-initdb.d
@@ -91,6 +91,7 @@ services:
       - app-network
     ports:
       - "3307:3306" # Đổi cổng host từ 3306 thành 3307
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci --init-file=/docker-entrypoint-initdb.d/init-databases.sql
 
 networks:
   app-network:
