@@ -147,7 +147,7 @@
                         <h3 class="text-lg font-bold">${product.name}</h3>
                         <p>${product.description || 'Không có mô tả'}</p>
                         <p class="text-green-600 font-bold">$${product.price}</p>
-                        <p>Kho: ${product.quantityInStock}</p>
+                        <p>Kho: ${product.quantity}</p>
                         <button onclick="addToCart(${product.id}, 1)" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 mt-2">Thêm vào giỏ hàng</button>
                     `;
                     productList.appendChild(card);
