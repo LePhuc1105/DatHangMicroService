@@ -32,183 +32,238 @@ public class OrderServiceImpl implements OrderService {
     @Transactional
     public Order createOrder(Order order) {
         try {
-            // 1. Kiểm tra tính hợp lệ của yêu cầu đặt hàng
-            if (order.getItems() == null || order.getItems().isEmpty()) {
-                logger.warn("Không có sản phẩm trong đơn hàng");
-                throw new IllegalArgumentException("Đơn hàng phải chứa ít nhất một sản phẩm");
-            }
-            if (order.getDeliveryDate() == null) {
-                logger.warn("Thời gian giao hàng không được để trống");
-                throw new IllegalArgumentException("Thời gian giao hàng là bắt buộc");
-            }
-            LocalDateTime now = LocalDateTime.now();
-            LocalDateTime minDeliveryDate = now.plusDays(2); // Thời gian giao hàng phải sau 2 ngày
-            if (order.getDeliveryDate().isBefore(minDeliveryDate)) {
-                logger.warn("Thời gian giao hàng không hợp lệ: {}, phải sau {}",
-                        order.getDeliveryDate(), minDeliveryDate);
-                throw new IllegalArgumentException("Thời gian giao hàng phải ít nhất 2 ngày sau thời điểm hiện tại");
-            }
-
-            // 2. Kiểm tra tài khoản người dùng
-            String userPermissionUrl = "http://user-service:8083/api/users/" + order.getCustomerUsername() + "/permission";
-            logger.debug("Gửi yêu cầu kiểm tra quyền hạn tới: {}", userPermissionUrl);
-            Boolean isUserValid = restTemplate.getForObject(userPermissionUrl, Boolean.class);
-            if (isUserValid == null || !isUserValid) {
-                logger.warn("Tài khoản không hợp lệ hoặc không có quyền: {}", order.getCustomerUsername());
-                throw new IllegalArgumentException("Tài khoản không hợp lệ hoặc không có quyền");
-            }
-
-            // 3. Lưu thông tin khách hàng
-            String userInfoUrl = "http://user-service:8083/api/users/" + order.getCustomerUsername() + "/info";
-            logger.debug("Gửi yêu cầu lưu thông tin khách hàng tới: {}", userInfoUrl);
-            try {
-                restTemplate.postForEntity(userInfoUrl,
-                        Map.of(
-                                "name", order.getCustomerName() != null ? order.getCustomerName() : "Unknown",
-                                "address", order.getCustomerAddress() != null ? order.getCustomerAddress() : "Unknown",
-                                "email", order.getCustomerEmail() != null ? order.getCustomerEmail() : "unknown@example.com",
-                                "phone", order.getCustomerPhone() != null ? order.getCustomerPhone() : "Unknown"
-                        ),
-                        Void.class);
-                logger.info("Lưu thông tin khách hàng thành công cho người dùng: {}", order.getCustomerUsername());
-            } catch (Exception e) {
-                logger.warn("Lỗi khi lưu thông tin khách hàng, tiếp tục quy trình: {}", e.getMessage(), e);
-            }
-
-            // 4. Kiểm tra và tính tổng giá
-            double totalPrice = 0.0;
-            for (OrderItem item : order.getItems()) {
-                if (item.getProductId() == null) {
-                    logger.warn("Tìm thấy item với productId null");
-                    throw new IllegalArgumentException("productId không được null");
-                }
-                // Lấy thông tin sản phẩm
-                String productUrl = "http://product-service:8082/api/products/" + item.getProductId();
-                logger.debug("Gửi yêu cầu lấy thông tin sản phẩm tới: {}", productUrl);
-                Map<String, Object> productResponse = restTemplate.getForObject(productUrl, Map.class);
-                if (productResponse == null) {
-                    logger.warn("Không tìm thấy sản phẩm với ID: {}", item.getProductId());
-                    throw new IllegalArgumentException("Sản phẩm không tồn tại: " + item.getProductId());
-                }
-                double productPrice = ((Number) productResponse.get("price")).doubleValue();
-                item.setUnitPrice(productPrice);
-                totalPrice += productPrice * item.getQuantity();
-
-                // Kiểm tra số lượng sản phẩm
-                String productCheckUrl = "http://product-service:8082/api/products/check?productId=" +
-                        item.getProductId() + "&quantity=" + item.getQuantity();
-                logger.debug("Gửi yêu cầu kiểm tra sản phẩm tới: {}", productCheckUrl);
-                Map<String, Boolean> productCheckResponse = restTemplate.getForObject(productCheckUrl, Map.class);
-                if (productCheckResponse == null) {
-                    logger.error("Không nhận được phản hồi từ ProductService cho productId: {}", item.getProductId());
-                    throw new RuntimeException("Lỗi khi kiểm tra tồn kho cho sản phẩm: " + item.getProductId());
-                }
-                Boolean isProductAvailable = productCheckResponse.get("isAvailable");
-                if (isProductAvailable == null || !isProductAvailable) {
-                    logger.warn("Sản phẩm không đủ số lượng: {} (yêu cầu: {})", item.getProductId(), item.getQuantity());
-                    throw new IllegalStateException("Sản phẩm không đủ số lượng trong kho: " + item.getProductId());
-                }
-            }
+            // 1. Validate order request
+            validateOrderRequest(order);
+            
+            // 2. Verify user account
+            verifyUserAccount(order.getCustomerUsername());
+            
+            // 3. Calculate total price and verify product availability
+            double totalPrice = calculateTotalAndVerifyProducts(order);
             order.setTotalPrice(totalPrice);
 
-            // 5. Lưu đơn hàng
-            order.setStatus("PENDING");
-            order.setCreatedAt(LocalDateTime.now());
-            logger.debug("Lưu đơn hàng vào cơ sở dữ liệu: {}", order);
-            Order savedOrder = orderRepository.save(order);
-
-            // 6. Lưu các mục đơn hàng
-            for (OrderItem item : order.getItems()) {
-                item.setOrderId(savedOrder.getId());
-                orderItemRepository.save(item);
+            // 4. Save order with initial status
+            Order savedOrder = saveInitialOrder(order);
+            
+            // 5. Try to update product inventory
+            try {
+                updateProductInventory(order);
+            } catch (Exception e) {
+                // Rollback already handled by @Transactional
+                logger.error("Failed to update product inventory: {}", e.getMessage(), e);
+                throw new RuntimeException("Failed to update product inventory: " + e.getMessage());
             }
-
-            // 7. Cập nhật số lượng sản phẩm
-            for (OrderItem item : order.getItems()) {
-                String updateProductUrl = "http://product-service:8082/api/products/" +
-                        item.getProductId() + "/updateQuantity?quantity=" + item.getQuantity();
-                logger.debug("Gửi yêu cầu cập nhật số lượng sản phẩm tới: {}", updateProductUrl);
-                try {
-                    restTemplate.put(updateProductUrl, null);
-                    logger.info("Cập nhật số lượng sản phẩm thành công cho sản phẩm ID: {}", item.getProductId());
-                } catch (Exception e) {
-                    logger.error("Lỗi khi cập nhật số lượng sản phẩm: {}", e.getMessage(), e);
-                    orderRepository.delete(savedOrder); // Bù trừ
-                    throw new RuntimeException("Không thể cập nhật số lượng sản phẩm: " + e.getMessage());
-                }
+            
+            // 6. Update order status to CONFIRMED after inventory update
+            savedOrder.setStatus("CONFIRMED");
+            savedOrder = orderRepository.save(savedOrder);
+            
+            // 7. Asynchronously process non-critical operations 
+            // These operations should not affect the order placement transaction
+            try {
+                // Save customer information (non-critical)
+                saveCustomerInfo(order);
+                
+                // Remove items from cart (non-critical)
+                removeItemsFromCart(order);
+                
+                // Send confirmation email (non-critical)
+                sendOrderConfirmationEmail(savedOrder);
+            } catch (Exception e) {
+                // Log but don't fail the transaction for non-critical operations
+                logger.warn("Non-critical post-order operations failed: {}", e.getMessage(), e);
             }
-
-            // 8. Xóa sản phẩm khỏi giỏ hàng
-            for (OrderItem item : order.getItems()) {
-                String cartUrl = "http://cart-service:8084/api/cart/" + order.getCustomerUsername() +
-                        "/items/" + item.getProductId();
-                logger.debug("Gửi yêu cầu xóa sản phẩm khỏi giỏ hàng tới: {}", cartUrl);
-                try {
-                    restTemplate.delete(cartUrl);
-                    logger.info("Xóa sản phẩm khỏi giỏ hàng thành công cho người dùng: {}", order.getCustomerUsername());
-                } catch (Exception e) {
-                    logger.warn("Lỗi khi xóa sản phẩm khỏi giỏ hàng, tiếp tục quy trình: {}", e.getMessage(), e);
-                }
-            }
-
-            // 9. Gửi email xác nhận
-             userInfoUrl = "http://user-service:8083/api/users/" + order.getCustomerUsername();
-            Map<String, String> userInfo = restTemplate.getForObject(userInfoUrl, Map.class);
-            String email = userInfo != null ? userInfo.get("email") : null;
-            if (email != null) {
-                String notificationUrl = "http://notification-service:8085/api/notifications/email";
-                logger.debug("Gửi yêu cầu gửi email xác nhận tới: {}", notificationUrl);
-                String itemsJson = objectMapper.writeValueAsString(order.getItems());
-                logger.debug("Payload gửi tới NotificationService: {}", Map.of(
-                        "email", email,
-                        "orderId", savedOrder.getId(),
-                        "status", "COMPLETED",
-                        "items", itemsJson,
-                        "totalPrice", savedOrder.getTotalPrice()
-                ));
-                restTemplate.postForEntity(notificationUrl,
-                        Map.of(
-                                "email", email,
-                                "orderId", savedOrder.getId(),
-                                "status", "COMPLETED",
-                                "items", itemsJson,
-                                "totalPrice", savedOrder.getTotalPrice()
-                        ),
-                        Void.class);
-                logger.info("Gửi email xác nhận thành công cho đơn hàng ID: {}", savedOrder.getId());
-            } else {
-                logger.warn("Không tìm thấy email cho người dùng {}, bỏ qua gửi email", order.getCustomerUsername());
-            }
-
-            // 10. Cập nhật trạng thái đơn hàng
-            savedOrder.setStatus("COMPLETED");
-            orderRepository.save(savedOrder);
 
             return savedOrder;
         } catch (IllegalArgumentException | IllegalStateException e) {
-            logger.error("Lỗi nghiệp vụ khi tạo đơn hàng: {}", e.getMessage(), e);
+            logger.error("Business error creating order: {}", e.getMessage(), e);
             throw e;
         } catch (HttpClientErrorException | HttpServerErrorException e) {
-            logger.error("Lỗi khi gọi API: {}", e.getMessage(), e);
-            throw new RuntimeException("Lỗi khi gọi API: " + e.getMessage());
+            logger.error("API error: {}", e.getMessage(), e);
+            throw new RuntimeException("API error: " + e.getMessage());
         } catch (Exception e) {
-            logger.error("Lỗi không xác định khi tạo đơn hàng: {}", e.getMessage(), e);
-            throw new RuntimeException("Không thể tạo đơn hàng: " + e.getMessage());
+            logger.error("Unexpected error creating order: {}", e.getMessage(), e);
+            throw new RuntimeException("Cannot create order: " + e.getMessage());
+        }
+    }
+    
+    private void validateOrderRequest(Order order) {
+        if (order.getItems() == null || order.getItems().isEmpty()) {
+            logger.warn("No products in order");
+            throw new IllegalArgumentException("Order must contain at least one product");
+        }
+        
+        if (order.getDeliveryDate() == null) {
+            logger.warn("Delivery date is required");
+            throw new IllegalArgumentException("Delivery date is required");
+        }
+        
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime minDeliveryDate = now.plusDays(2);
+        if (order.getDeliveryDate().isBefore(minDeliveryDate)) {
+            logger.warn("Invalid delivery date: {}, must be after {}", 
+                    order.getDeliveryDate(), minDeliveryDate);
+            throw new IllegalArgumentException("Delivery date must be at least 2 days in the future");
+        }
+    }
+    
+    private void verifyUserAccount(String username) {
+        String userPermissionUrl = "http://user-service:8083/api/users/" + username + "/permission";
+        logger.debug("Sending permission verification request to: {}", userPermissionUrl);
+        
+        Boolean isUserValid = restTemplate.getForObject(userPermissionUrl, Boolean.class);
+        if (isUserValid == null || !isUserValid) {
+            logger.warn("Invalid account or insufficient permissions: {}", username);
+            throw new IllegalArgumentException("Invalid account or insufficient permissions");
+        }
+    }
+    
+    private double calculateTotalAndVerifyProducts(Order order) {
+        double totalPrice = 0.0;
+        
+        for (OrderItem item : order.getItems()) {
+            if (item.getProductId() == null) {
+                logger.warn("Found item with null productId");
+                throw new IllegalArgumentException("productId cannot be null");
+            }
+            
+            // Get product information
+            String productUrl = "http://product-service:8082/api/products/" + item.getProductId();
+            logger.debug("Fetching product information from: {}", productUrl);
+            
+            Map<String, Object> productResponse = restTemplate.getForObject(productUrl, Map.class);
+            if (productResponse == null) {
+                logger.warn("Product not found with ID: {}", item.getProductId());
+                throw new IllegalArgumentException("Product does not exist: " + item.getProductId());
+            }
+            
+            double productPrice = ((Number) productResponse.get("price")).doubleValue();
+            item.setUnitPrice(productPrice);
+            totalPrice += productPrice * item.getQuantity();
+            
+            // Verify product stock
+            String productCheckUrl = "http://product-service:8082/api/products/check?productId=" + 
+                    item.getProductId() + "&quantity=" + item.getQuantity();
+            logger.debug("Verifying product stock: {}", productCheckUrl);
+            
+            Map<String, Boolean> productCheckResponse = restTemplate.getForObject(productCheckUrl, Map.class);
+            if (productCheckResponse == null) {
+                logger.error("No response from ProductService for productId: {}", item.getProductId());
+                throw new RuntimeException("Error checking inventory for product: " + item.getProductId());
+            }
+            
+            Boolean isProductAvailable = productCheckResponse.get("isAvailable");
+            if (isProductAvailable == null || !isProductAvailable) {
+                logger.warn("Product not available in requested quantity: {} (required: {})", 
+                        item.getProductId(), item.getQuantity());
+                throw new IllegalStateException("Product not available in requested quantity: " + item.getProductId());
+            }
+        }
+        
+        return totalPrice;
+    }
+    
+    private Order saveInitialOrder(Order order) {
+        // Set initial status and metadata
+        order.setStatus("PROCESSING");
+        order.setCreatedAt(LocalDateTime.now());
+        
+        logger.debug("Saving order to database: {}", order);
+        Order savedOrder = orderRepository.save(order);
+        
+        // Save order items
+        for (OrderItem item : order.getItems()) {
+            item.setOrderId(savedOrder.getId());
+            orderItemRepository.save(item);
+        }
+        
+        return savedOrder;
+    }
+    
+    private void updateProductInventory(Order order) {
+        for (OrderItem item : order.getItems()) {
+            String updateProductUrl = "http://product-service:8082/api/products/" + 
+                    item.getProductId() + "/updateQuantity?quantity=" + item.getQuantity();
+            logger.debug("Updating product inventory: {}", updateProductUrl);
+            
+            restTemplate.put(updateProductUrl, null);
+            logger.info("Successfully updated inventory for product ID: {}", item.getProductId());
+        }
+    }
+    
+    private void saveCustomerInfo(Order order) {
+        String userInfoUrl = "http://user-service:8083/api/users/" + order.getCustomerUsername() + "/info";
+        logger.debug("Saving customer information to: {}", userInfoUrl);
+        
+        restTemplate.postForEntity(userInfoUrl,
+                Map.of(
+                        "name", order.getCustomerName() != null ? order.getCustomerName() : "Unknown",
+                        "address", order.getCustomerAddress() != null ? order.getCustomerAddress() : "Unknown",
+                        "email", order.getCustomerEmail() != null ? order.getCustomerEmail() : "unknown@example.com",
+                        "phone", order.getCustomerPhone() != null ? order.getCustomerPhone() : "Unknown"
+                ),
+                Void.class);
+        logger.info("Successfully saved customer information for user: {}", order.getCustomerUsername());
+    }
+    
+    private void removeItemsFromCart(Order order) {
+        for (OrderItem item : order.getItems()) {
+            String cartUrl = "http://cart-service:8084/api/cart/" + order.getCustomerUsername() + 
+                    "/items/" + item.getProductId();
+            logger.debug("Removing product from cart: {}", cartUrl);
+            
+            try {
+                restTemplate.delete(cartUrl);
+                logger.info("Successfully removed product from cart for user: {}", order.getCustomerUsername());
+            } catch (Exception e) {
+                logger.warn("Error removing product from cart, continuing process: {}", e.getMessage());
+            }
+        }
+    }
+    
+    private void sendOrderConfirmationEmail(Order order) {
+        String userInfoUrl = "http://user-service:8083/api/users/" + order.getCustomerUsername();
+        Map<String, String> userInfo = restTemplate.getForObject(userInfoUrl, Map.class);
+        String email = userInfo != null ? userInfo.get("email") : null;
+        
+        if (email != null) {
+            try {
+                String notificationUrl = "http://notification-service:8085/api/notifications/email";
+                logger.debug("Sending confirmation email request to: {}", notificationUrl);
+                
+                String itemsJson = objectMapper.writeValueAsString(order.getItems());
+                
+                restTemplate.postForEntity(notificationUrl,
+                        Map.of(
+                                "email", email,
+                                "orderId", order.getId(),
+                                "status", order.getStatus(),
+                                "items", itemsJson,
+                                "totalPrice", order.getTotalPrice()
+                        ),
+                        Void.class);
+                
+                logger.info("Successfully sent confirmation email for order ID: {}", order.getId());
+            } catch (Exception e) {
+                logger.warn("Could not send confirmation email: {}", e.getMessage());
+            }
+        } else {
+            logger.warn("No email found for user {}, skipping email notification", order.getCustomerUsername());
         }
     }
 
     @Override
     public Order getOrderById(Long orderId) {
-        logger.debug("Tìm kiếm đơn hàng với ID: {}", orderId);
+        logger.debug("Finding order with ID: {}", orderId);
         try {
             return orderRepository.findById(orderId)
-                    .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy đơn hàng với ID: " + orderId));
+                    .orElseThrow(() -> new IllegalArgumentException("Order not found with ID: " + orderId));
         } catch (IllegalArgumentException e) {
-            logger.error("Lỗi khi tìm kiếm đơn hàng {}: {}", orderId, e.getMessage(), e);
+            logger.error("Error finding order {}: {}", orderId, e.getMessage(), e);
             throw e;
         } catch (Exception e) {
-            logger.error("Lỗi không xác định khi tìm kiếm đơn hàng {}: {}", orderId, e.getMessage(), e);
-            throw new RuntimeException("Không thể tìm kiếm đơn hàng: " + e.getMessage());
+            logger.error("Unexpected error finding order {}: {}", orderId, e.getMessage(), e);
+            throw new RuntimeException("Cannot find order: " + e.getMessage());
         }
     }
 }

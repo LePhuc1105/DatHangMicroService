@@ -15,9 +15,20 @@ let selectedProduct = null;
 let selectedQuantity = 0;
 let isUserValid = false; // Track if user is valid
 
+// API Endpoints using config.js
+const API_BASE = {
+  products: window.API_CONFIG.getUrl('products'),
+  cart: window.API_CONFIG.getUrl('cart'),
+  orders: window.API_CONFIG.getUrl('orders'),
+  users: window.API_CONFIG.getUrl('users')
+};
+
 // Function to fetch and display products
 function fetchProducts() {
-  fetch('http://localhost:8082/api/products/')
+  fetch(`${API_BASE.products}/`, {
+    ...API_CONFIG.fetchOptions,
+    method: 'GET'
+  })
     .then(response => {
       if (!response.ok) throw new Error('Không thể tải sản phẩm.');
       return response.json();
@@ -83,7 +94,10 @@ userForm.addEventListener('submit', (e) => {
   const address = addressField.value;
   const phone = phoneField.value;
 
-  fetch(`http://localhost:8083/api/users/${username}`)
+  fetch(`${API_BASE.users}/${username}`, {
+    ...API_CONFIG.fetchOptions,
+    method: 'GET'
+  })
     .then(response => {
       if (response.status === 404) {
         throw new Error('Tài khoản không tồn tại. Vui lòng sử dụng tài khoản hợp lệ.');
@@ -135,11 +149,9 @@ submitOrderButton.addEventListener('click', () => {
 
   console.log('Order:', order);
 
-  fetch('http://localhost:8081/orders', {
+  fetch(API_BASE.orders, {
+    ...API_CONFIG.fetchOptions,
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
     body: JSON.stringify(order),
   })
     .then(response => {

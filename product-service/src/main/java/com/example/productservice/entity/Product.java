@@ -21,7 +21,7 @@ public class Product {
     @Column(nullable = false)
     private double price;
 
-    @Column(nullable = false)
+    @Column(name = "quantity_in_stock", nullable = false)
     private int quantity;
 
     @Column(name = "created_at")
