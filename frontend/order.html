@@ -130,40 +130,13 @@
                             <select class="form-select" id="accountSelect">
                                 <option value="" selected disabled>-- Chọn tài khoản --</option>
                                 <option value="existing">Sử dụng thông tin hiện tại</option>
-                                <option value="new">Nhập thông tin mới</option>
                             </select>
+                            <div class="form-text text-muted mt-1">
+                                <i class="fas fa-info-circle me-1"></i>Bạn cần có thông tin tài khoản để đặt hàng
+                            </div>
                         </div>
                         
-                        <form id="userForm" class="d-none">
-                            <div class="mb-3">
-                                <label for="username" class="form-label">Tên người dùng</label>
-                                <div class="input-group">
-                                    <span class="input-group-text"><i class="fas fa-user"></i></span>
-                                    <input type="text" class="form-control" id="username" placeholder="Nhập tên của bạn" required>
-                                </div>
-                            </div>
-                            <div class="mb-3">
-                                <label for="email" class="form-label">Email</label>
-                                <div class="input-group">
-                                    <span class="input-group-text"><i class="fas fa-envelope"></i></span>
-                                    <input type="email" class="form-control" id="email" placeholder="Nhập email của bạn" required>
-                                </div>
-                            </div>
-                            <div class="mb-3">
-                                <label for="address" class="form-label">Địa chỉ</label>
-                                <div class="input-group">
-                                    <span class="input-group-text"><i class="fas fa-map-marker-alt"></i></span>
-                                    <input type="text" class="form-control" id="address" placeholder="Nhập địa chỉ của bạn" required>
-                                </div>
-                            </div>
-                            <div class="mb-3">
-                                <label for="phone" class="form-label">Số điện thoại</label>
-                                <div class="input-group">
-                                    <span class="input-group-text"><i class="fas fa-phone"></i></span>
-                                    <input type="tel" class="form-control" id="phone" placeholder="Nhập số điện thoại của bạn" required>
-                                </div>
-                            </div>
-                        </form>
+                        <!-- Form nhập thông tin đã được xóa, chỉ hiển thị thông tin hiện tại -->
 
                         <div id="existingUserInfo" class="d-none">
                             <div class="card bg-light mb-3">

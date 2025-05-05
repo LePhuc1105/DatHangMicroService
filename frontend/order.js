@@ -8,19 +8,12 @@ const productDetailsElement = document.getElementById('productDetails');
 const productControlsElement = document.getElementById('productControls');
 const accountInfoSection = document.getElementById('accountInfoSection');
 const accountSelect = document.getElementById('accountSelect');
-const userForm = document.getElementById('userForm');
 const existingUserInfo = document.getElementById('existingUserInfo');
 const proceedToCheckoutButton = document.getElementById('proceedToCheckout');
 const submitOrderButton = document.getElementById('submitOrder');
 const productErrorMessage = document.getElementById('productErrorMessage');
 const userErrorMessage = document.getElementById('userErrorMessage');
 const successMessage = document.getElementById('successMessage');
-
-// Form fields
-const usernameField = document.getElementById('username');
-const emailField = document.getElementById('email');
-const addressField = document.getElementById('address');
-const phoneField = document.getElementById('phone');
 
 // Order summary elements
 const selectedProductNameElement = document.getElementById('selectedProductName');
@@ -135,15 +128,61 @@ function loadUserData() {
     }
 }
 
+// Kiểm tra đầy đủ thông tin user data
+function isUserDataComplete() {
+    if (!userData) return false;
+    
+    // Kiểm tra từng trường thông tin cần thiết
+    const requiredFields = ['fullName', 'email', 'address', 'phone'];
+    const missingFields = [];
+    
+    requiredFields.forEach(field => {
+        if (!userData[field] || userData[field].trim() === '') {
+            missingFields.push(field);
+        }
+    });
+    
+    if (missingFields.length > 0) {
+        // Tạo thông báo về các trường bị thiếu
+        let message = 'Thông tin tài khoản của bạn chưa đầy đủ. Vui lòng cập nhật ';
+        if (missingFields.length === 1) {
+            message += fieldNameInVietnamese(missingFields[0]);
+        } else {
+            message += missingFields.map(f => fieldNameInVietnamese(f)).join(', ');
+        }
+        message += ' trong phần Thông tin tài khoản.';
+        return { complete: false, message: message, missingFields: missingFields };
+    }
+    
+    return { complete: true };
+}
+
+// Chuyển đổi tên trường sang tiếng Việt
+function fieldNameInVietnamese(fieldName) {
+    const fieldMap = {
+        'fullName': 'họ tên',
+        'email': 'email',
+        'address': 'địa chỉ',
+        'phone': 'số điện thoại'
+    };
+    return fieldMap[fieldName] || fieldName;
+}
+
 // Update existing user info display
 function updateExistingUserInfo() {
     if (!userData) return;
     
     // Display fullName in user info block instead of username
-    document.getElementById('currentUsername').textContent = userData.fullName || userData.username || '';
-    document.getElementById('currentEmail').textContent = userData.email || '';
-    document.getElementById('currentAddress').textContent = userData.address || '';
-    document.getElementById('currentPhone').textContent = userData.phone || '';
+    document.getElementById('currentUsername').textContent = userData.fullName || '(Chưa cập nhật)';
+    document.getElementById('currentEmail').textContent = userData.email || '(Chưa cập nhật)';
+    document.getElementById('currentAddress').textContent = userData.address || '(Chưa cập nhật)';
+    document.getElementById('currentPhone').textContent = userData.phone || '(Chưa cập nhật)';
+    
+    // Kiểm tra và đánh dấu các trường bị thiếu
+    const validationResult = isUserDataComplete();
+    if (!validationResult.complete) {
+        highlightMissingFields(validationResult.missingFields);
+    }
 }
 
 // Setup event listeners
@@ -162,26 +201,30 @@ function setupEventListeners() {
     if (submitOrderButton) {
         submitOrderButton.addEventListener('click', handleOrderSubmit);
     }
-    
-    // User form
-    if (userForm) {
-        userForm.addEventListener('submit', handleUserSubmit);
-    }
 }
 
 // Handle account select change
 function handleAccountSelectChange() {
     const selectedOption = accountSelect.value;
     
+    // Reset các thông báo lỗi
+    hideError(userErrorMessage);
+    
     if (selectedOption === 'existing') {
-        userForm.classList.add('d-none');
         existingUserInfo.classList.remove('d-none');
-    } else if (selectedOption === 'new') {
-        userForm.classList.remove('d-none');
-        existingUserInfo.classList.add('d-none');
+        
+        // Kiểm tra nếu không có dữ liệu người dùng
+        if (!userData || !userData.fullName) {
+            showError(userErrorMessage, 'Không có thông tin người dùng hiện tại. Vui lòng cập nhật thông tin trong trang Thông tin tài khoản.');
+            submitOrderButton.disabled = true;
+            return;
+        } else {
+            // Đã có thông tin người dùng, cho phép đặt hàng
+            submitOrderButton.disabled = false;
+        }
     } else {
-        userForm.classList.add('d-none');
         existingUserInfo.classList.add('d-none');
+        submitOrderButton.disabled = true;
     }
 }
 
@@ -227,38 +270,13 @@ function updateOrderSummary() {
     }
 }
 
-// Handle user form submission
-function handleUserSubmit(event) {
-    if (event) event.preventDefault();
-    
-    const formData = {
-        username: usernameField.value,
-        email: emailField.value,
-        address: addressField.value,
-        phone: phoneField.value
-    };
-    
-    // Update user data
-    userData = {
-        username: formData.username,
-        email: formData.email,
-        address: formData.address,
-        phone: formData.phone
-    };
-    
-    // Store in local storage for future use
-    localStorage.setItem('dathang_user', JSON.stringify(userData));
-    
-    hideError(userErrorMessage);
-    showSuccess('Thông tin người dùng đã được xác nhận');
-    
-    return true;
-}
-
 // Handle order submission
 async function handleOrderSubmit() {
     try {
         console.log("=== Starting Order Submission ===");
+        
+        // Reset thông báo lỗi
+        hideError(userErrorMessage);
         
         // Check if product is selected
         if (!selectedProduct) {
@@ -270,20 +288,22 @@ async function handleOrderSubmit() {
         const selectedOption = accountSelect.value;
         if (!selectedOption) {
             showError(userErrorMessage, 'Vui lòng chọn thông tin tài khoản!');
+            accountSelect.focus();
             return;
         }
         
-        // If new account info is selected, validate and save form
-        if (selectedOption === 'new') {
-            if (!handleUserSubmit()) {
-                return;
-            }
-        } else if (selectedOption === 'existing') {
-            // Use existing user data
-            if (!userData) {
-                showError(userErrorMessage, 'Không có thông tin tài khoản. Vui lòng đăng nhập hoặc nhập thông tin mới!');
-                return;
-            }
+        // Use existing user data
+        if (!userData) {
+            showError(userErrorMessage, 'Không có thông tin tài khoản. Vui lòng cập nhật thông tin trong trang Thông tin tài khoản!');
+            return;
+        }
+        
+        // Kiểm tra đầy đủ các trường thông tin
+        const validationResult = isUserDataComplete();
+        if (!validationResult.complete) {
+            showError(userErrorMessage, validationResult.message);
+            highlightMissingFields(validationResult.missingFields);
+            return;
         }
         
         // Disable submit button and show loading
@@ -344,7 +364,7 @@ async function handleOrderSubmit() {
                     <p>Sản phẩm: ${selectedProduct.name}</p>
                     <p>Số lượng: ${selectedQuantity}</p>
                     <p>Tổng tiền: ${formatPrice(totalAmount)} VND</p>
-                    <p>Chúng tôi sẽ liên hệ với bạn qua email để xác nhận đơn hàng.</p>
+                    <p>Chúng tôi sẽ liên hệ với bạn qua email ${userData.email} để xác nhận đơn hàng.</p>
                     <div class="mt-3">
                         <a href="index.html" class="btn btn-primary">Quay lại trang chủ</a>
                     </div>
@@ -357,10 +377,6 @@ async function handleOrderSubmit() {
             // Disable all controls
             accountSelect.disabled = true;
             submitOrderButton.disabled = true;
-            if (userForm) {
-                const formInputs = userForm.querySelectorAll('input');
-                formInputs.forEach(input => input.disabled = true);
-            }
         } catch (apiError) {
             console.error('API call error:', apiError);
             throw apiError;
