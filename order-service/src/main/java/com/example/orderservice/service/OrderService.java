@@ -37,26 +37,27 @@ public class OrderService {
             // Bước 1: Kiểm tra quyền người dùng thông qua user service
             logger.info("Bắt đầu quy trình đặt hàng cho người dùng ID: {}", order.getUserId());
             
-            // // Trong trường hợp này, chúng ta cần lấy username từ userId trước
-            // String username = getUsernameFromId(order.getUserId());
-            // if (username == null) {
-            //     logger.warn("Không thể lấy username cho userId: {}", order.getUserId());
-            //     return null;
-            // }
+            // Lấy username từ userId
+            String username = getUsernameFromId(order.getUserId());
+            if (username == null) {
+                logger.warn("Không thể lấy username cho userId: {}", order.getUserId());
+                return null;
+            }
             
-            // if (!checkPermission(username)) {
-            //     logger.warn("Không có quyền tạo đơn hàng cho username: {}", username);
-            //     return null;
-            // }
+            // Kiểm tra quyền người dùng
+            if (!checkPermission(username)) {
+                logger.warn("Không có quyền tạo đơn hàng cho username: {}", username);
+                return null;
+            }
             
             // Bước 2: Kiểm tra số lượng sản phẩm trong kho
             logger.info("Kiểm tra số lượng sản phẩm ID: {} - Yêu cầu: {}", 
                        order.getProductId(), order.getQuantity());
                        
-            // if (!checkProductAvailability(order.getProductId(), order.getQuantity())) {
-            //     logger.warn("Sản phẩm không đủ số lượng trong kho");
-            //     return null;
-            // }
+            if (!checkProductAvailability(order.getProductId(), order.getQuantity())) {
+                logger.warn("Sản phẩm không đủ số lượng trong kho");
+                return null;
+            }
             
             logger.info("Sản phẩm đủ số lượng để đặt hàng");
 
