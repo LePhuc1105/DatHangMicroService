@@ -1,9 +1,8 @@
 services:
-  # Eureka Server
   eureka-server:
     build:
       context: ./eureka-server
-    container_name: eureka-server-new
+    container_name: eureka-server
     ports:
       - "8761:8761"
     environment:
@@ -11,6 +10,51 @@ services:
     networks:
       - app-network
     restart: always
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8761/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
+  # API Gateway
+  api-gateway:
+    build:
+      context: ./api-gateway
+    container_name: api-gateway
+    ports:
+      - "8080:8080"
+    environment:
+      - EUREKA_SERVER_URL=http://eureka-server:8761/eureka/
+      - SPRING_PROFILES_ACTIVE=docker
+    depends_on:
+      eureka-server:
+        condition: service_healthy
+    networks:
+      - app-network
+    restart: always
+
+  # MySQL Database
+  mysql:
+    image: mysql:8
+    container_name: mysql-db
+    environment:
+      - MYSQL_ROOT_PASSWORD=123456
+      - MYSQL_DATABASE=order_db
+    volumes:
+      - mysql-data:/var/lib/mysql
+      - ./db-init:/docker-entrypoint-initdb.d
+    networks:
+      - app-network
+    ports:
+      - "3307:3306" # Đổi cổng host từ 3306 thành 3307
+    command: --lower_case_table_names=1
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p123456"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
 
   # Order Service
   order-service:
@@ -20,11 +64,13 @@ services:
     ports:
       - "8081:8081"
     environment:
-      - EUREKA_SERVER_URL=http://eureka-server-new:8761/eureka/
+      - EUREKA_SERVER_URL=http://eureka-server:8761/eureka/
       - SPRING_PROFILES_ACTIVE=docker
     depends_on:
-      - eureka-server
-      - mysql
+      eureka-server:
+        condition: service_healthy
+      mysql:
+        condition: service_healthy
     networks:
       - app-network
     restart: always
@@ -33,14 +79,17 @@ services:
   user-service:
     build:
       context: ./user-service
-    container_name: user-service-new
+    container_name: user-service
     ports:
       - "8083:8083"
     environment:
-      - EUREKA_SERVER_URL=http://eureka-server-new:8761/eureka/
+      - EUREKA_SERVER_URL=http://eureka-server:8761/eureka/
       - SPRING_PROFILES_ACTIVE=docker
     depends_on:
-      - eureka-server
+      eureka-server:
+        condition: service_healthy
+      mysql:
+        condition: service_healthy
     networks:
       - app-network
     restart: always
@@ -53,14 +102,17 @@ services:
     ports:
       - "8082:8082"
     environment:
-      - EUREKA_SERVER_URL=http://eureka-server-new:8761/eureka/
+      - EUREKA_SERVER_URL=http://eureka-server:8761/eureka/
       - SPRING_PROFILES_ACTIVE=docker
     depends_on:
-      - eureka-server
-      - mysql
+      eureka-server:
+        condition: service_healthy
+      mysql:
+        condition: service_healthy
     networks:
       - app-network
     restart: always
+
   # Cart Service
   cart-service:
     build:
@@ -69,11 +121,13 @@ services:
     ports:
       - "8084:8084"
     environment:
-      - EUREKA_SERVER_URL=http://eureka-server-new:8761/eureka/
+      - EUREKA_SERVER_URL=http://eureka-server:8761/eureka/
       - SPRING_PROFILES_ACTIVE=docker
     depends_on:
-      - eureka-server
-      - mysql
+      eureka-server:
+        condition: service_healthy
+      mysql:
+        condition: service_healthy
     networks:
       - app-network
     restart: always
@@ -82,34 +136,20 @@ services:
   notification-service:
     build:
       context: ./notification-service
-    container_name: notification-service-new
+    container_name: notification-service
     ports:
       - "8085:8085"
     environment:
-      - EUREKA_SERVER_URL=http://eureka-server-new:8761/eureka/
+      - EUREKA_SERVER_URL=http://eureka-server:8761/eureka/
       - SPRING_PROFILES_ACTIVE=docker
       - RESEND_API_KEY=re_6Z1wL99Y_c3b32g7AoTMWit2a7TMZZpLN
       - RESEND_FROM_EMAIL=no-reply@resend.dev
     depends_on:
-      - eureka-server
+      eureka-server:
+        condition: service_healthy
     networks:
       - app-network
     restart: always
-
-
-  # MySQL Database
-  mysql:
-    image: mysql:8
-    container_name: mysql-db
-    environment:
-      - MYSQL_ROOT_PASSWORD=123456
-      - MYSQL_DATABASE=order_db
-    volumes:
-      - mysql-data:/var/lib/mysql
-    networks:
-      - app-network
-    ports:
-      - "3307:3306" # Đổi cổng host từ 3306 thành 3307
 
 networks:
   app-network:

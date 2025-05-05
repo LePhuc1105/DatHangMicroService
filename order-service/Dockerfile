@@ -1,14 +1,13 @@
-# Sử dụng image của OpenJDK 17
-FROM openjdk:17-jdk-slim
-
-# Đặt thư mục làm việc trong container
+# Stage 1: Build the application
+FROM maven:3.8.6-openjdk-11 AS build
 WORKDIR /app
+COPY pom.xml .
+COPY src ./src
+RUN mvn clean package -DskipTests
 
-# Copy file jar vào container
-COPY target/order-service-0.0.1-SNAPSHOT.jar order-service.jar
-
-# Mở cổng 8081 để chạy ứng dụng
+# Stage 2: Run the application
+FROM openjdk:11-jre-slim
+WORKDIR /app
+COPY --from=build /app/target/order-service-0.0.1-SNAPSHOT.jar order-service.jar
 EXPOSE 8081
-
-# Chạy ứng dụng khi container khởi động
 ENTRYPOINT ["java", "-jar", "/app/order-service.jar"]

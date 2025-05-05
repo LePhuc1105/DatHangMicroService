@@ -1,14 +1,13 @@
-# Sử dụng image của OpenJDK 17
-FROM openjdk:17-jdk-slim
-
-# Đặt thư mục làm việc trong container
+# Stage 1: Build the application
+FROM maven:3.9.6 AS build
 WORKDIR /app
+COPY pom.xml .
+COPY src ./src
+RUN mvn clean package -DskipTests
 
-# Copy file jar của cart-service vào container
-COPY target/cart-service-0.0.1-SNAPSHOT.jar cart-service.jar
-
-# Mở cổng 8080 để chạy ứng dụng (cổng có thể thay đổi tùy theo cấu hình của bạn)
-EXPOSE 8080
-
-# Chạy ứng dụng khi container khởi động
+# Stage 2: Run the application
+FROM openjdk:17-jdk-slim
+WORKDIR /app
+COPY --from=build /app/target/cart-service-0.0.1-SNAPSHOT.jar cart-service.jar
+EXPOSE 8084
 ENTRYPOINT ["java", "-jar", "/app/cart-service.jar"]
