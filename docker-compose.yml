@@ -61,6 +61,41 @@ services:
     networks:
       - app-network
     restart: always
+  # Cart Service
+  cart-service:
+    build:
+      context: ./cart-service
+    container_name: cart-service
+    ports:
+      - "8084:8084"
+    environment:
+      - EUREKA_SERVER_URL=http://eureka-server-new:8761/eureka/
+      - SPRING_PROFILES_ACTIVE=docker
+    depends_on:
+      - eureka-server
+      - mysql
+    networks:
+      - app-network
+    restart: always
+
+  # Notification Service
+  notification-service:
+    build:
+      context: ./notification-service
+    container_name: notification-service-new
+    ports:
+      - "8085:8085"
+    environment:
+      - EUREKA_SERVER_URL=http://eureka-server-new:8761/eureka/
+      - SPRING_PROFILES_ACTIVE=docker
+      - RESEND_API_KEY=re_6Z1wL99Y_c3b32g7AoTMWit2a7TMZZpLN
+      - RESEND_FROM_EMAIL=no-reply@resend.dev
+    depends_on:
+      - eureka-server
+    networks:
+      - app-network
+    restart: always
+
 
   # MySQL Database
   mysql:

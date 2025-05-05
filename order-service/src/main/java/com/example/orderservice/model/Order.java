@@ -1,28 +1,50 @@
 package com.example.orderservice.model;
 
+import javax.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 
-import javax.persistence.*;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
-@Table(name = "`order`")
+@Table(name = "Orders")
 @Getter
 @Setter
 public class Order {
-
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "customer_address")
-    private String customerAddress;
+    @Column(name = "customer_username", nullable = false)
+    private String customerUsername;
 
-    @Column(name = "customer_name")
+    @Column(name = "total_price", nullable = false)
+    private double totalPrice;
+
+    @Column(name = "delivery_date")
+    private LocalDateTime deliveryDate;
+
+    @Column(nullable = false)
+    private String status;
+
+    @Column(name = "created_at")
+    private LocalDateTime createdAt;
+
+    // Các trường tạm thời để lưu thông tin khách hàng từ client
+    @Transient
     private String customerName;
 
-    @Column(name = "product_id")
-    private Long productId;
+    @Transient
+    private String customerAddress;
 
-    private Integer quantity;
+    @Transient
+    private String customerEmail;
+
+    @Transient
+    private String customerPhone;
+
+    @Transient
+    private List<OrderItem> items = new ArrayList<>();
 }

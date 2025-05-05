@@ -1,24 +1,29 @@
 package com.example.productservice.entity;
 
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import lombok.*;
+import jakarta.persistence.*;
+import lombok.Getter;
+import lombok.Setter;
 
 @Entity
+@Table(name = "Products")
 @Getter
 @Setter
-@NoArgsConstructor
-@AllArgsConstructor
-@Builder
 public class Product {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Column(nullable = false)
     private String name;
+
     private String description;
-    private Double price;
-    private Integer quantity;
+
+    @Column(nullable = false)
+    private double price;
+
+    @Column(nullable = false)
+    private int quantity;
+
+    @Column(name = "created_at")
+    private java.time.LocalDateTime createdAt;
 }

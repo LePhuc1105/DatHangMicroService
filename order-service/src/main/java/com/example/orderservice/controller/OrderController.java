@@ -7,30 +7,21 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/orders")
+@RequestMapping("/api/orders")
 @RequiredArgsConstructor
 public class OrderController {
 
     private final OrderService orderService;
 
-    // Tạo đơn hàng mới
     @PostMapping
     public ResponseEntity<Order> createOrder(@RequestBody Order order) {
-        // Kiểm tra tài khoản người dùng và tính hợp lệ đơn hàng
         Order createdOrder = orderService.createOrder(order);
-        if (createdOrder == null) {
-            return ResponseEntity.badRequest().build();  // Nếu có lỗi, trả về BadRequest
-        }
-        return ResponseEntity.ok(createdOrder);  // Trả về đơn hàng đã tạo
+        return ResponseEntity.ok(createdOrder);
     }
 
-    // Lấy thông tin đơn hàng theo ID
-    @GetMapping("/{orderId}")
-    public ResponseEntity<Order> getOrderById(@PathVariable Long orderId) {
-        Order order = orderService.getOrderById(orderId);
-        if (order == null) {
-            return ResponseEntity.notFound().build();  // Nếu không tìm thấy đơn hàng, trả về NotFound
-        }
+    @GetMapping("/{id}")
+    public ResponseEntity<Order> getOrderById(@PathVariable Long id) {
+        Order order = orderService.getOrderById(id);
         return ResponseEntity.ok(order);
     }
 }

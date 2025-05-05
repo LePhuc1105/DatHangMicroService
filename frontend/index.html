@@ -1,101 +1,414 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="vi">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Order Service</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <style>
-    body {
-      background: linear-gradient(to bottom right, #f3f4f6, #e5e7eb);
-      min-height: 100vh;
-    }
-    .error-message {
-      color: #dc2626;
-      font-size: 0.875rem;
-      margin-top: 0.5rem;
-    }
-    .success-message {
-      background: #10b981;
-      color: white;
-      padding: 1rem;
-      border-radius: 0.5rem;
-      margin-top: 1rem;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hệ thống đặt hàng</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Tùy chỉnh thêm CSS */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            align-items: center;
+            justify-content: center;
+        }
+        .modal-content {
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            width: 90%;
+            max-width: 400px;
+        }
+        .product-card {
+            transition: transform 0.2s;
+        }
+        .product-card:hover {
+            transform: scale(1.05);
+        }
+    </style>
 </head>
-<body class="flex items-center justify-center p-4">
-  <div class="container max-w-4xl w-full bg-white rounded-2xl shadow-xl p-8">
-    <h1 class="text-3xl font-bold text-gray-800 mb-8 text-center">Đặt Hàng Online</h1>
+<body class="bg-gray-100 font-sans">
+    <!-- Header -->
+    <header class="bg-blue-600 text-white p-4">
+        <div class="container mx-auto flex justify-between items-center">
+            <h1 class="text-2xl font-bold">Cửa hàng trực tuyến</h1>
+            <div>
+                <button id="cart-btn" class="bg-yellow-500 text-white px-4 py-2 rounded hover:bg-yellow-600">Giỏ hàng (<span id="cart-count">0</span>)</button>
+                <button id="login-btn" class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 ml-2">Đăng nhập</button>
+            </div>
+        </div>
+    </header>
 
-    <!-- User Information -->
-    <div class="user-info mb-8">
-      <h2 class="text-xl font-semibold text-gray-700 mb-4">Thông Tin Khách Hàng</h2>
-      <form id="userForm" class="space-y-4">
-        <input 
-          type="text" 
-          id="username" 
-          placeholder="Nhập tên người dùng" 
-          required 
-          class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-        >
-        <input 
-          type="email" 
-          id="email" 
-          placeholder="Nhập email" 
-          required 
-          class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-        >
-        <input 
-          type="text" 
-          id="address" 
-          placeholder="Nhập địa chỉ" 
-          required 
-          class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-        >
-        <input 
-          type="text" 
-          id="phone" 
-          placeholder="Nhập số điện thoại" 
-          required 
-          class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-        >
-        <button 
-          type="submit" 
-          class="w-full bg-blue-600 text-white p-3 rounded-lg hover:bg-blue-700 transition duration-300"
-        >
-          Kiểm Tra Tài Khoản
-        </button>
-      </form>
-      <div id="userErrorMessage" class="error-message"></div>
+    <!-- Main Content -->
+    <main class="container mx-auto p-4">
+        <!-- Product List -->
+        <section id="product-list" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            <!-- Products will be loaded via JavaScript -->
+        </section>
+
+        <!-- Cart Section (Hidden by default) -->
+        <section id="cart-section" class="hidden mt-8">
+            <h2 class="text-2xl font-bold mb-4">Giỏ hàng của bạn</h2>
+            <div id="cart-items" class="space-y-4"></div>
+            <div class="mt-4">
+                <button id="close-cart" class="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600">Đóng</button>
+                <button id="checkout-btn" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 ml-2">Thanh toán</button>
+            </div>
+        </section>
+
+        <!-- Checkout Form (Hidden by default) -->
+        <section id="checkout-section" class="hidden mt-8">
+            <h2 class="text-2xl font-bold mb-4">Thông tin thanh toán</h2>
+            <form id="checkout-form" class="space-y-4">
+                <div>
+                    <label for="name" class="block text-sm font-medium">Họ tên</label>
+                    <input type="text" id="name" name="name" class="w-full p-2 border rounded" required>
+                </div>
+                <div>
+                    <label for="address" class="block text-sm font-medium">Địa chỉ</label>
+                    <input type="text" id="address" name="address" class="w-full p-2 border rounded" required>
+                </div>
+                <div>
+                    <label for="email" class="block text-sm font-medium">Email</label>
+                    <input type="email" id="email" name="email" class="w-full p-2 border rounded" required>
+                </div>
+                <div>
+                    <label for="phone" class="block text-sm font-medium">Số điện thoại</label>
+                    <input type="tel" id="phone" name="phone" class="w-full p-2 border rounded" required>
+                </div>
+                <div>
+                    <label for="delivery-date" class="block text-sm font-medium">Ngày giao hàng</label>
+                    <input type="date" id="delivery-date" name="deliveryDate" class="w-full p-2 border rounded" required>
+                </div>
+                <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">Xác nhận đặt hàng</button>
+            </form>
+        </section>
+    </main>
+
+    <!-- Login Modal -->
+    <div id="login-modal" class="modal">
+        <div class="modal-content">
+            <h2 class="text-xl font-bold mb-4">Đăng nhập</h2>
+            <form id="login-form" class="space-y-4">
+                <div>
+                    <label for="username" class="block text-sm font-medium">Tên đăng nhập</label>
+                    <input type="text" id="username" name="username" class="w-full p-2 border rounded" required>
+                </div>
+                <div>
+                    <label for="password" class="block text-sm font-medium">Mật khẩu</label>
+                    <input type="password" id="password" name="password" class="w-full p-2 border rounded" required>
+                </div>
+                <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">Đăng nhập</button>
+                <button type="button" id="close-login" class="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600 ml-2">Đóng</button>
+            </form>
+        </div>
     </div>
 
-    <!-- Product Selection -->
-    <div class="product-selection mb-8">
-      <h2 class="text-xl font-semibold text-gray-700 mb-4">Chọn Sản Phẩm</h2>
-      <div id="productList" class="grid grid-cols-1 sm:grid-cols-2 gap-4"></div>
-      <div id="productErrorMessage" class="error-message"></div>
-    </div>
+    <!-- JavaScript -->
+    <script>
+        // Biến toàn cục
+        let currentUser = null;
+        let cartCount = 0;
 
-    <!-- Order Summary -->
-    <div class="order-summary mb-8">
-      <h2 class="text-xl font-semibold text-gray-700 mb-4">Đơn Hàng</h2>
-      <p id="orderSummary" class="text-gray-600 bg-gray-100 p-4 rounded-lg"></p>
-      <button 
-        id="submitOrder" 
-        disabled 
-        class="w-full mt-4 bg-gray-400 text-white p-3 rounded-lg cursor-not-allowed hover:bg-gray-500 transition duration-300 disabled:opacity-50"
-      >
-        Đặt Hàng
-      </button>
-    </div>
+        // API Endpoints
+        const API_BASE = {
+            products: 'http://localhost:8082/api/products',
+            cart: 'http://localhost:8084/api/cart',
+            orders: 'http://localhost:8081/api/orders',
+            users: 'http://localhost:8083/api/users'
+        };
 
-    <!-- Success Message -->
-    <div id="successMessage" class="success-message hidden">
-      <p>Đơn hàng của bạn đã được xác nhận!</p>
-    </div>
-  </div>
+        // Thiết lập giá trị min cho delivery-date
+        document.addEventListener('DOMContentLoaded', () => {
+            const deliveryDateInput = document.getElementById('delivery-date');
+            const today = new Date();
+            const minDate = new Date(today.setDate(today.getDate() + 2));
+            const minDateString = minDate.toISOString().split('T')[0];
+            deliveryDateInput.setAttribute('min', minDateString);
+        });
 
-  <script src="script.js"></script>
+        // Load Products
+        async function loadProducts() {
+            try {
+                const response = await fetch(API_BASE.products);
+                const products = await response.json();
+                const productList = document.getElementById('product-list');
+                productList.innerHTML = '';
+                products.forEach(product => {
+                    const card = document.createElement('div');
+                    card.className = 'product-card bg-white p-4 rounded shadow';
+                    card.innerHTML = `
+                        <h3 class="text-lg font-bold">${product.name}</h3>
+                        <p>${product.description || 'Không có mô tả'}</p>
+                        <p class="text-green-600 font-bold">$${product.price}</p>
+                        <p>Kho: ${product.quantityInStock}</p>
+                        <button onclick="addToCart(${product.id}, 1)" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 mt-2">Thêm vào giỏ hàng</button>
+                    `;
+                    productList.appendChild(card);
+                });
+            } catch (error) {
+                console.error('Lỗi khi tải sản phẩm:', error);
+                alert('Không thể tải danh sách sản phẩm');
+            }
+        }
+
+        // Load Cart
+        async function loadCart() {
+            if (!currentUser) {
+                alert('Vui lòng đăng nhập để xem giỏ hàng');
+                showLoginModal();
+                return;
+            }
+            try {
+                const response = await fetch(`${API_BASE.cart}/${currentUser.username}/items`);
+                const items = await response.json();
+                const cartItems = document.getElementById('cart-items');
+                cartItems.innerHTML = '';
+                cartCount = 0;
+                for (const item of items) {
+                    if (!item.productId) {
+                        console.warn('Bỏ qua item với productId không hợp lệ:', item);
+                        continue;
+                    }
+                    cartCount += item.quantity;
+                    // Lấy thông tin sản phẩm
+                    let productName = `Sản phẩm ID: ${item.productId}`;
+                    try {
+                        const productResponse = await fetch(`${API_BASE.products}/${item.productId}`);
+                        const product = await productResponse.json();
+                        productName = product.name;
+                    } catch (e) {
+                        console.error(`Lỗi khi lấy thông tin sản phẩm ${item.productId}:`, e);
+                    }
+                    const div = document.createElement('div');
+                    div.className = 'bg-white p-4 rounded shadow flex justify-between items-center';
+                    div.innerHTML = `
+                        <div class="flex items-center">
+                            <input type="checkbox" class="cart-item-checkbox mr-2" data-product-id="${item.productId}" data-quantity="${item.quantity}">
+                            <div>
+                                <p class="font-bold">${productName}</p>
+                                <p>Số lượng: <input type="number" value="${item.quantity}" min="1" onchange="updateCart(${item.productId}, this.value)" class="w-16 p-1 border rounded"></p>
+                            </div>
+                        </div>
+                        <button onclick="removeFromCart(${item.productId})" class="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600">Xóa</button>
+                    `;
+                    cartItems.appendChild(div);
+                }
+                document.getElementById('cart-count').textContent = cartCount;
+                document.getElementById('cart-section').classList.remove('hidden');
+                document.getElementById('product-list').classList.add('hidden');
+                document.getElementById('checkout-section').classList.add('hidden');
+            } catch (error) {
+                console.error('Lỗi khi tải giỏ hàng:', error);
+                alert('Không thể tải giỏ hàng');
+            }
+        }
+
+        // Add to Cart
+        async function addToCart(productId, quantity) {
+            if (!currentUser) {
+                alert('Vui lòng đăng nhập để thêm sản phẩm vào giỏ hàng');
+                showLoginModal();
+                return;
+            }
+            if (!productId) {
+                alert('ID sản phẩm không hợp lệ');
+                return;
+            }
+            try {
+                await fetch(`${API_BASE.cart}/${currentUser.username}/items`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ productId, quantity })
+                });
+                cartCount += quantity;
+                document.getElementById('cart-count').textContent = cartCount;
+                alert('Đã thêm sản phẩm vào giỏ hàng');
+            } catch (error) {
+                console.error('Lỗi khi thêm vào giỏ hàng:', error);
+                alert('Không thể thêm sản phẩm vào giỏ hàng');
+            }
+        }
+
+        // Update Cart
+        async function updateCart(productId, quantity) {
+            try {
+                await fetch(`${API_BASE.cart}/${currentUser.username}/items/${productId}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ quantity: parseInt(quantity) })
+                });
+                loadCart();
+            } catch (error) {
+                console.error('Lỗi khi cập nhật giỏ hàng:', error);
+                alert('Không thể cập nhật giỏ hàng');
+            }
+        }
+
+        // Remove from Cart
+        async function removeFromCart(productId) {
+            try {
+                await fetch(`${API_BASE.cart}/${currentUser.username}/items/${productId}`, {
+                    method: 'DELETE'
+                });
+                loadCart();
+            } catch (error) {
+                console.error('Lỗi khi xóa sản phẩm khỏi giỏ hàng:', error);
+                alert('Không thể xóa sản phẩm khỏi giỏ hàng');
+            }
+        }
+
+        // Show Checkout Form
+        async function showCheckout() {
+            if (!currentUser) {
+                alert('Vui lòng đăng nhập để thanh toán');
+                showLoginModal();
+                return;
+            }
+            try {
+                const response = await fetch(`${API_BASE.cart}/${currentUser.username}/items`);
+                const cartItems = await response.json();
+                if (cartItems.length === 0) {
+                    alert('Giỏ hàng trống, vui lòng thêm sản phẩm');
+                    return;
+                }
+                const checkboxes = document.querySelectorAll('.cart-item-checkbox:checked');
+                if (checkboxes.length === 0) {
+                    alert('Vui lòng chọn ít nhất một sản phẩm để thanh toán');
+                    return;
+                }
+                document.getElementById('cart-section').classList.add('hidden');
+                document.getElementById('checkout-section').classList.remove('hidden');
+            } catch (error) {
+                console.error('Lỗi khi kiểm tra giỏ hàng:', error);
+                alert('Không thể tải giỏ hàng để thanh toán');
+            }
+        }
+
+        // Handle Checkout
+        document.getElementById('checkout-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            if (!currentUser) {
+                alert('Vui lòng đăng nhập để thanh toán');
+                showLoginModal();
+                return;
+            }
+            try {
+                const checkboxes = document.querySelectorAll('.cart-item-checkbox:checked');
+                if (checkboxes.length === 0) {
+                    alert('Vui lòng chọn ít nhất một sản phẩm để thanh toán');
+                    return;
+                }
+                const selectedItems = Array.from(checkboxes).map(checkbox => {
+                    const productId = parseInt(checkbox.dataset.productId);
+                    const quantity = parseInt(checkbox.dataset.quantity);
+                    if (!productId || !quantity) {
+                        throw new Error('Dữ liệu sản phẩm không hợp lệ');
+                    }
+                    return { productId, quantity };
+                });
+
+                const formData = new FormData(e.target);
+                let deliveryDate = formData.get('deliveryDate');
+                const selectedDate = new Date(deliveryDate);
+                const minDate = new Date();
+                minDate.setDate(minDate.getDate() + 2);
+                if (selectedDate < minDate) {
+                    alert('Ngày giao hàng phải ít nhất 2 ngày sau ngày hiện tại');
+                    return;
+                }
+                deliveryDate = selectedDate.toISOString();
+
+                const orderData = {
+                    customerUsername: currentUser.username,
+                    customerName: formData.get('name'),
+                    customerAddress: formData.get('address'),
+                    customerEmail: formData.get('email'),
+                    customerPhone: formData.get('phone'),
+                    items: selectedItems,
+                    deliveryDate
+                };
+
+                console.log('Order data:', orderData);
+
+                const response = await fetch(API_BASE.orders, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(orderData)
+                });
+
+                if (response.ok) {
+                    alert('Đặt hàng thành công! Kiểm tra email để xem xác nhận.');
+                    e.target.reset();
+                    document.getElementById('checkout-section').classList.add('hidden');
+                    document.getElementById('product-list').classList.remove('hidden');
+                    cartCount = 0;
+                    document.getElementById('cart-count').textContent = cartCount;
+                    loadCart();
+                } else {
+                    const errorData = await response.json();
+                    throw new Error(errorData.message || 'Lỗi khi đặt hàng');
+                }
+            } catch (error) {
+                console.error('Lỗi khi đặt hàng:', error);
+                alert('Không thể đặt hàng: ' + error.message);
+            }
+        });
+
+        // Handle Login
+        document.getElementById('login-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const formData = new FormData(e.target);
+            const loginData = {
+                username: formData.get('username'),
+                password: formData.get('password')
+            };
+            try {
+                const response = await fetch(`${API_BASE.users}/${loginData.username}/permission`, {
+                    headers: { 'Authorization': 'Basic ' + btoa(`${loginData.username}:${loginData.password}`) }
+                });
+                if (response.ok && (await response.json())) {
+                    currentUser = { username: loginData.username };
+                    document.getElementById('login-modal').style.display = 'none';
+                    document.getElementById('login-btn').textContent = `Xin chào, ${currentUser.username}`;
+                    alert('Đăng nhập thành công');
+                    loadProducts();
+                } else {
+                    throw new Error('Tài khoản hoặc mật khẩu không đúng');
+                }
+            } catch (error) {
+                console.error('Lỗi khi đăng nhập:', error);
+                alert('Đăng nhập thất bại: ' + error.message);
+            }
+        });
+
+        // Show/Hide Login Modal
+        function showLoginModal() {
+            document.getElementById('login-modal').style.display = 'flex';
+        }
+        document.getElementById('login-btn').addEventListener('click', showLoginModal);
+        document.getElementById('close-login').addEventListener('click', () => {
+            document.getElementById('login-modal').style.display = 'none';
+        });
+
+        // Show/Hide Cart
+        document.getElementById('cart-btn').addEventListener('click', loadCart);
+        document.getElementById('close-cart').addEventListener('click', () => {
+            document.getElementById('cart-section').classList.add('hidden');
+            document.getElementById('product-list').classList.remove('hidden');
+        });
+
+        // Show Checkout
+        document.getElementById('checkout-btn').addEventListener('click', showCheckout);
+
+        // Load products on page load
+        loadProducts();
+    </script>
 </body>
 </html>

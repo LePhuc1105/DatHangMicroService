@@ -22,10 +22,36 @@ public class UserController {
                 .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
-    // Kiểm tra tài khoản có đủ quyền hạn để đặt hàng
-    @GetMapping("/{username}/check")
-    public ResponseEntity<Boolean> checkUserPermissions(@PathVariable String username) {
+    @GetMapping("/{username}/permission")
+    public ResponseEntity<Boolean> checkUserPermission(@PathVariable String username) {
         boolean hasPermission = userService.checkUserPermission(username);
         return ResponseEntity.ok(hasPermission);
+    }
+
+    @PostMapping("/{username}/info")
+    public ResponseEntity<Void> saveUserInfo(
+            @PathVariable String username,
+            @RequestBody UserInfoRequest request) {
+        userService.saveUserInfo(username, request.getName(), request.getAddress(),
+                request.getEmail(), request.getPhone());
+        return ResponseEntity.ok().build();
+    }
+
+    // DTO để nhận thông tin từ request
+    public static class UserInfoRequest {
+        private String name;
+        private String address;
+        private String email;
+        private String phone;
+
+        // Getters and setters
+        public String getName() { return name; }
+        public void setName(String name) { this.name = name; }
+        public String getAddress() { return address; }
+        public void setAddress(String address) { this.address = address; }
+        public String getEmail() { return email; }
+        public void setEmail(String email) { this.email = email; }
+        public String getPhone() { return phone; }
+        public void setPhone(String phone) { this.phone = phone; }
     }
 }
