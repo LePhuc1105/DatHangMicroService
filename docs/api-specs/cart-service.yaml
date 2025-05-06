@@ -1,0 +1,229 @@
+openapi: 3.0.0
+info:
+  title: Cart Service API
+  description: API quản lý giỏ hàng của người dùng, cho phép thêm, xóa và cập nhật sản phẩm trong giỏ hàng
+  version: 1.0.0
+servers:
+  - url: http://localhost:8084
+    description: Máy chủ phát triển cục bộ
+paths:
+  /api/cart/{username}/items:
+    get:
+      summary: Lấy giỏ hàng của người dùng
+      description: Trả về danh sách các sản phẩm trong giỏ hàng của người dùng
+      parameters:
+        - name: username
+          in: path
+          required: true
+          description: Tên đăng nhập của người dùng
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Thao tác thành công
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CartItem'
+        '404':
+          description: Không tìm thấy người dùng hoặc giỏ hàng
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Lỗi máy chủ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    post:
+      summary: Thêm sản phẩm vào giỏ hàng
+      description: Thêm sản phẩm mới vào giỏ hàng của người dùng hoặc cập nhật số lượng nếu sản phẩm đã tồn tại
+      parameters:
+        - name: username
+          in: path
+          required: true
+          description: Tên đăng nhập của người dùng
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddToCartRequest'
+      responses:
+        '200':
+          description: Sản phẩm được thêm thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CartItem'
+        '400':
+          description: Dữ liệu không hợp lệ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Không tìm thấy người dùng hoặc sản phẩm
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Lỗi máy chủ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /api/cart/{username}/items/{productId}:
+    put:
+      summary: Cập nhật số lượng sản phẩm
+      description: Cập nhật số lượng sản phẩm trong giỏ hàng
+      parameters:
+        - name: username
+          in: path
+          required: true
+          description: Tên đăng nhập của người dùng
+          schema:
+            type: string
+        - name: productId
+          in: path
+          required: true
+          description: ID của sản phẩm
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - quantity
+              properties:
+                quantity:
+                  type: integer
+                  description: Số lượng mới của sản phẩm
+      responses:
+        '200':
+          description: Cập nhật thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CartItem'
+        '400':
+          description: Dữ liệu không hợp lệ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Không tìm thấy người dùng, giỏ hàng hoặc sản phẩm
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Lỗi máy chủ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    delete:
+      summary: Xóa sản phẩm khỏi giỏ hàng
+      description: Xóa sản phẩm ra khỏi giỏ hàng của người dùng
+      parameters:
+        - name: username
+          in: path
+          required: true
+          description: Tên đăng nhập của người dùng
+          schema:
+            type: string
+        - name: productId
+          in: path
+          required: true
+          description: ID của sản phẩm
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: Xóa thành công
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    description: Trạng thái thao tác
+                  message:
+                    type: string
+                    description: Thông báo thành công
+        '404':
+          description: Không tìm thấy người dùng, giỏ hàng hoặc sản phẩm
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Lỗi máy chủ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+components:
+  schemas:
+    CartItem:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+          description: ID của mục giỏ hàng
+        username:
+          type: string
+          description: Tên đăng nhập của người dùng
+        productId:
+          type: integer
+          format: int64
+          description: ID của sản phẩm
+        quantity:
+          type: integer
+          description: Số lượng
+        price:
+          type: number
+          format: double
+          description: Giá sản phẩm tại thời điểm thêm vào giỏ
+        productName:
+          type: string
+          description: Tên sản phẩm
+    AddToCartRequest:
+      type: object
+      required:
+        - productId
+        - quantity
+      properties:
+        productId:
+          type: integer
+          format: int64
+          description: ID của sản phẩm
+        quantity:
+          type: integer
+          description: Số lượng sản phẩm
+    Error:
+      type: object
+      properties:
+        code:
+          type: integer
+          format: int32
+          description: Mã lỗi
+        message:
+          type: string
+          description: Thông báo lỗi 

@@ -1,0 +1,173 @@
+openapi: 3.0.0
+info:
+  title: Order Service API
+  description: API for managing orders in the Online Ordering System
+  version: 1.0.0
+servers:
+  - url: http://localhost:8081
+    description: Local development server
+paths:
+  /api/orders:
+    post:
+      summary: Create a new order
+      description: Create a new order with the provided details
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OrderRequest'
+      responses:
+        '200':
+          description: Order created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+        '400':
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /api/orders/{id}:
+    get:
+      summary: Get order by ID
+      description: Retrieve an order by its ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+        '404':
+          description: Order not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+components:
+  schemas:
+    OrderRequest:
+      type: object
+      required:
+        - customerUsername
+        - deliveryDate
+        - items
+      properties:
+        customerUsername:
+          type: string
+          description: Username of the customer
+        customerName:
+          type: string
+          description: Name of the customer
+        customerAddress:
+          type: string
+          description: Address of the customer
+        customerEmail:
+          type: string
+          format: email
+          description: Email of the customer
+        customerPhone:
+          type: string
+          description: Phone number of the customer
+        deliveryDate:
+          type: string
+          format: date-time
+          description: Requested delivery date (must be at least 2 days in the future)
+        items:
+          type: array
+          description: Items in the order
+          items:
+            $ref: '#/components/schemas/OrderItemRequest'
+    OrderItemRequest:
+      type: object
+      required:
+        - productId
+        - quantity
+      properties:
+        productId:
+          type: integer
+          format: int64
+          description: ID of the product
+        quantity:
+          type: integer
+          description: Quantity of the product
+    Order:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+          description: Order ID
+        customerUsername:
+          type: string
+          description: Username of the customer
+        totalPrice:
+          type: number
+          format: double
+          description: Total price of the order
+        deliveryDate:
+          type: string
+          format: date-time
+          description: Delivery date
+        status:
+          type: string
+          description: Status of the order (PENDING, COMPLETED, CANCELLED)
+        createdAt:
+          type: string
+          format: date-time
+          description: Creation timestamp
+        items:
+          type: array
+          description: Items in the order
+          items:
+            $ref: '#/components/schemas/OrderItem'
+    OrderItem:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+          description: Order item ID
+        productId:
+          type: integer
+          format: int64
+          description: ID of the product
+        quantity:
+          type: integer
+          description: Quantity of the product
+        unitPrice:
+          type: number
+          format: double
+          description: Price per unit
+    Error:
+      type: object
+      properties:
+        code:
+          type: integer
+          format: int32
+          description: Error code
+        message:
+          type: string
+          description: Error message 

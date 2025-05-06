@@ -1,0 +1,124 @@
+openapi: 3.0.0
+info:
+  title: Notification Service API
+  description: API quản lý việc gửi thông báo cho người dùng, chủ yếu là gửi email xác nhận đơn hàng
+  version: 1.0.0
+servers:
+  - url: http://localhost:8085
+    description: Máy chủ phát triển cục bộ
+paths:
+  /api/notifications/email:
+    post:
+      summary: Gửi email thông báo
+      description: Gửi email thông báo đến người dùng
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EmailNotificationRequest'
+      responses:
+        '200':
+          description: Email được gửi thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotificationResponse'
+        '400':
+          description: Dữ liệu không hợp lệ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Lỗi máy chủ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+components:
+  schemas:
+    EmailNotificationRequest:
+      type: object
+      required:
+        - recipient
+        - subject
+        - content
+        - orderId
+      properties:
+        recipient:
+          type: string
+          format: email
+          description: Địa chỉ email người nhận
+        subject:
+          type: string
+          description: Chủ đề email
+        content:
+          type: string
+          description: Nội dung email (có thể là HTML)
+        orderId:
+          type: integer
+          format: int64
+          description: ID của đơn hàng liên quan
+        additionalInfo:
+          type: object
+          description: Thông tin bổ sung (dạng key-value)
+    NotificationResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          description: ID của thông báo đã được gửi
+        status:
+          type: string
+          description: Trạng thái gửi (SENT, FAILED)
+          enum: [SENT, FAILED]
+        sentAt:
+          type: string
+          format: date-time
+          description: Thời gian gửi
+        message:
+          type: string
+          description: Thông báo kết quả
+    Notification:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+          description: ID của thông báo
+        type:
+          type: string
+          description: Loại thông báo (EMAIL, SMS, PUSH)
+          enum: [EMAIL, SMS, PUSH]
+        recipient:
+          type: string
+          description: Người nhận (email, số điện thoại)
+        subject:
+          type: string
+          description: Chủ đề thông báo
+        content:
+          type: string
+          description: Nội dung thông báo
+        status:
+          type: string
+          description: Trạng thái gửi
+          enum: [PENDING, SENT, FAILED]
+        createdAt:
+          type: string
+          format: date-time
+          description: Thời gian tạo
+        sentAt:
+          type: string
+          format: date-time
+          description: Thời gian gửi
+    Error:
+      type: object
+      properties:
+        code:
+          type: integer
+          format: int32
+          description: Mã lỗi
+        message:
+          type: string
+          description: Thông báo lỗi 
