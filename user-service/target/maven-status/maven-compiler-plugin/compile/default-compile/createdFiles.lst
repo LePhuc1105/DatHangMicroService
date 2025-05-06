@@ -1,8 +1,0 @@
-com\example\userservice\config\CorsConfig.class
-com\example\userservice\service\impl\UserServiceImpl.class
-com\example\userservice\controller\UserController$UserInfoRequest.class
-com\example\userservice\entity\User.class
-com\example\userservice\repository\UserRepository.class
-com\example\userservice\UserServiceApplication.class
-com\example\userservice\controller\UserController.class
-com\example\userservice\service\UserService.class

@@ -1,7 +1,0 @@
-com\example\productservice\service\impl\ProductServiceImpl.class
-com\example\productservice\controller\ProductController.class
-com\example\productservice\ProductServiceApplication.class
-com\example\productservice\repository\ProductRepository.class
-com\example\productservice\config\CorsConfig.class
-com\example\productservice\service\ProductService.class
-com\example\productservice\entity\Product.class
