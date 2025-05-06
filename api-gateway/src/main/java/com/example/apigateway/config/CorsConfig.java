@@ -13,16 +13,17 @@ public class CorsConfig {
 
     @Bean
     public CorsWebFilter corsWebFilter() {
-        CorsConfiguration corsConfig = new CorsConfiguration();
-        corsConfig.setAllowedOrigins(Arrays.asList("*")); // Cho phép tất cả các origin, trong môi trường production nên chỉ định cụ thể
-        corsConfig.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
-        corsConfig.setAllowedHeaders(Arrays.asList("*"));
-        corsConfig.setMaxAge(3600L);
-        corsConfig.setAllowCredentials(true);
-
+        CorsConfiguration config = new CorsConfiguration();
+        
+        // Set specific allowed origins instead of wildcard
+        config.setAllowedOrigins(Arrays.asList("http://localhost", "http://localhost:3000", "http://127.0.0.1"));
+        config.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        config.setAllowedHeaders(Arrays.asList("*"));
+        config.setMaxAge(3600L);
+        
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        source.registerCorsConfiguration("/**", corsConfig);
-
+        source.registerCorsConfiguration("/**", config);
+        
         return new CorsWebFilter(source);
     }
 } 

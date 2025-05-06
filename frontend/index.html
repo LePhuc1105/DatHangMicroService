@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Hệ thống đặt hàng</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Include configuration file -->
+    <script src="config.js"></script>
     <style>
         /* Tùy chỉnh thêm CSS */
         .modal {
@@ -116,12 +118,12 @@
         let currentUser = null;
         let cartCount = 0;
 
-        // API Endpoints
+        // API Endpoints using the config.js
         const API_BASE = {
-            products: 'http://localhost:8082/api/products',
-            cart: 'http://localhost:8084/api/cart',
-            orders: 'http://localhost:8081/api/orders',
-            users: 'http://localhost:8083/api/users'
+            products: API_CONFIG.getUrl('products'),
+            cart: API_CONFIG.getUrl('cart'),
+            orders: API_CONFIG.getUrl('orders'),
+            users: API_CONFIG.getUrl('users')
         };
 
         // Thiết lập giá trị min cho delivery-date
@@ -136,7 +138,10 @@
         // Load Products
         async function loadProducts() {
             try {
-                const response = await fetch(API_BASE.products);
+                const response = await fetch(API_BASE.products, {
+                    ...API_CONFIG.fetchOptions,
+                    method: 'GET'
+                });
                 const products = await response.json();
                 const productList = document.getElementById('product-list');
                 productList.innerHTML = '';
@@ -166,7 +171,10 @@
                 return;
             }
             try {
-                const response = await fetch(`${API_BASE.cart}/${currentUser.username}/items`);
+                const response = await fetch(`${API_BASE.cart}/${currentUser.username}/items`, {
+                    ...API_CONFIG.fetchOptions,
+                    method: 'GET'
+                });
                 const items = await response.json();
                 const cartItems = document.getElementById('cart-items');
                 cartItems.innerHTML = '';
@@ -180,7 +188,10 @@
                     // Lấy thông tin sản phẩm
                     let productName = `Sản phẩm ID: ${item.productId}`;
                     try {
-                        const productResponse = await fetch(`${API_BASE.products}/${item.productId}`);
+                        const productResponse = await fetch(`${API_BASE.products}/${item.productId}`, {
+                            ...API_CONFIG.fetchOptions,
+                            method: 'GET'
+                        });
                         const product = await productResponse.json();
                         productName = product.name;
                     } catch (e) {
@@ -223,8 +234,8 @@
             }
             try {
                 await fetch(`${API_BASE.cart}/${currentUser.username}/items`, {
+                    ...API_CONFIG.fetchOptions,
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ productId, quantity })
                 });
                 cartCount += quantity;
@@ -240,8 +251,8 @@
         async function updateCart(productId, quantity) {
             try {
                 await fetch(`${API_BASE.cart}/${currentUser.username}/items/${productId}`, {
+                    ...API_CONFIG.fetchOptions,
                     method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ quantity: parseInt(quantity) })
                 });
                 loadCart();
@@ -255,6 +266,7 @@
         async function removeFromCart(productId) {
             try {
                 await fetch(`${API_BASE.cart}/${currentUser.username}/items/${productId}`, {
+                    ...API_CONFIG.fetchOptions,
                     method: 'DELETE'
                 });
                 loadCart();
@@ -272,7 +284,10 @@
                 return;
             }
             try {
-                const response = await fetch(`${API_BASE.cart}/${currentUser.username}/items`);
+                const response = await fetch(`${API_BASE.cart}/${currentUser.username}/items`, {
+                    ...API_CONFIG.fetchOptions,
+                    method: 'GET'
+                });
                 const cartItems = await response.json();
                 if (cartItems.length === 0) {
                     alert('Giỏ hàng trống, vui lòng thêm sản phẩm');
@@ -338,8 +353,8 @@
                 console.log('Order data:', orderData);
 
                 const response = await fetch(API_BASE.orders, {
+                    ...API_CONFIG.fetchOptions,
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(orderData)
                 });
 
@@ -370,9 +385,16 @@
                 password: formData.get('password')
             };
             try {
-                const response = await fetch(`${API_BASE.users}/${loginData.username}/permission`, {
-                    headers: { 'Authorization': 'Basic ' + btoa(`${loginData.username}:${loginData.password}`) }
-                });
+                // For this specific endpoint, we need to send authorization
+                const authOptions = {
+                    ...API_CONFIG.fetchOptions,
+                    method: 'GET',
+                    headers: { 
+                        ...API_CONFIG.fetchOptions.headers,
+                        'Authorization': 'Basic ' + btoa(`${loginData.username}:${loginData.password}`) 
+                    }
+                };
+                const response = await fetch(`${API_BASE.users}/${loginData.username}/permission`, authOptions);
                 if (response.ok && (await response.json())) {
                     currentUser = { username: loginData.username };
                     document.getElementById('login-modal').style.display = 'none';
