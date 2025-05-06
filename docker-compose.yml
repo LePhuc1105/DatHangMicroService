@@ -1,12 +1,14 @@
+version: '3.8'
+
 services:
   eureka-server:
     build:
-      context: ./eureka-server
+      context: ./services/eureka-server
     container_name: eureka-server
     ports:
-      - "8761:8761"
+      - "${EUREKA_PORT:-8761}:8761"
     environment:
-      - SPRING_PROFILES_ACTIVE=default
+      - SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE:-default}
     networks:
       - app-network
     restart: always
@@ -23,10 +25,10 @@ services:
       context: ./api-gateway
     container_name: api-gateway
     ports:
-      - "8080:8080"
+      - "${API_GATEWAY_PORT:-8080}:8080"
     environment:
-      - EUREKA_SERVER_URL=http://eureka-server:8761/eureka/
-      - SPRING_PROFILES_ACTIVE=docker
+      - EUREKA_SERVER_URL=${EUREKA_SERVER_URL:-http://eureka-server:8761/eureka/}
+      - SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE:-docker}
     depends_on:
       eureka-server:
         condition: service_healthy
@@ -40,7 +42,7 @@ services:
       context: ./frontend
     container_name: frontend
     ports:
-      - "80:80"
+      - "${FRONTEND_PORT:-80}:80"
     depends_on:
       - api-gateway
     networks:
@@ -52,18 +54,18 @@ services:
     image: mysql:8
     container_name: mysql-db
     environment:
-      - MYSQL_ROOT_PASSWORD=123456
-      - MYSQL_DATABASE=order_db
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD:-123456}
+      - MYSQL_DATABASE=${MYSQL_DATABASE:-order_db}
     volumes:
       - mysql-data:/var/lib/mysql
       - ./db-init:/docker-entrypoint-initdb.d
     networks:
       - app-network
     ports:
-      - "3307:3306" # Đổi cổng host từ 3306 thành 3307
+      - "3307:3306"
     command: --lower_case_table_names=1
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p123456"]
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD:-123456}"]
       interval: 10s
       timeout: 5s
       retries: 3
@@ -72,13 +74,13 @@ services:
   # Order Service
   order-service:
     build:
-      context: ./order-service
+      context: ./services/order-service
     container_name: order-service
     ports:
-      - "8081:8081"
+      - "${ORDER_SERVICE_PORT:-8081}:8081"
     environment:
-      - EUREKA_SERVER_URL=http://eureka-server:8761/eureka/
-      - SPRING_PROFILES_ACTIVE=docker
+      - EUREKA_SERVER_URL=${EUREKA_SERVER_URL:-http://eureka-server:8761/eureka/}
+      - SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE:-docker}
     depends_on:
       eureka-server:
         condition: service_healthy
@@ -91,13 +93,13 @@ services:
   # User Service
   user-service:
     build:
-      context: ./user-service
+      context: ./services/user-service
     container_name: user-service
     ports:
-      - "8083:8083"
+      - "${USER_SERVICE_PORT:-8083}:8083"
     environment:
-      - EUREKA_SERVER_URL=http://eureka-server:8761/eureka/
-      - SPRING_PROFILES_ACTIVE=docker
+      - EUREKA_SERVER_URL=${EUREKA_SERVER_URL:-http://eureka-server:8761/eureka/}
+      - SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE:-docker}
     depends_on:
       eureka-server:
         condition: service_healthy
@@ -110,13 +112,13 @@ services:
   # Product Service
   product-service:
     build:
-      context: ./product-service
+      context: ./services/product-service
     container_name: product-service
     ports:
-      - "8082:8082"
+      - "${PRODUCT_SERVICE_PORT:-8082}:8082"
     environment:
-      - EUREKA_SERVER_URL=http://eureka-server:8761/eureka/
-      - SPRING_PROFILES_ACTIVE=docker
+      - EUREKA_SERVER_URL=${EUREKA_SERVER_URL:-http://eureka-server:8761/eureka/}
+      - SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE:-docker}
     depends_on:
       eureka-server:
         condition: service_healthy
@@ -129,13 +131,13 @@ services:
   # Cart Service
   cart-service:
     build:
-      context: ./cart-service
+      context: ./services/cart-service
     container_name: cart-service
     ports:
-      - "8084:8084"
+      - "${CART_SERVICE_PORT:-8084}:8084"
     environment:
-      - EUREKA_SERVER_URL=http://eureka-server:8761/eureka/
-      - SPRING_PROFILES_ACTIVE=docker
+      - EUREKA_SERVER_URL=${EUREKA_SERVER_URL:-http://eureka-server:8761/eureka/}
+      - SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE:-docker}
     depends_on:
       eureka-server:
         condition: service_healthy
@@ -148,15 +150,15 @@ services:
   # Notification Service
   notification-service:
     build:
-      context: ./notification-service
+      context: ./services/notification-service
     container_name: notification-service
     ports:
-      - "8085:8085"
+      - "${NOTIFICATION_SERVICE_PORT:-8085}:8085"
     environment:
-      - EUREKA_SERVER_URL=http://eureka-server:8761/eureka/
-      - SPRING_PROFILES_ACTIVE=docker
-      - RESEND_API_KEY=re_6Z1wL99Y_c3b32g7AoTMWit2a7TMZZpLN
-      - RESEND_FROM_EMAIL=no-reply@resend.dev
+      - EUREKA_SERVER_URL=${EUREKA_SERVER_URL:-http://eureka-server:8761/eureka/}
+      - SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE:-docker}
+      - RESEND_API_KEY=${RESEND_API_KEY:-re_6Z1wL99Y_c3b32g7AoTMWit2a7TMZZpLN}
+      - RESEND_FROM_EMAIL=${RESEND_FROM_EMAIL:-no-reply@resend.dev}
     depends_on:
       eureka-server:
         condition: service_healthy

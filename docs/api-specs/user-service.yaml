@@ -1,0 +1,180 @@
+openapi: 3.0.0
+info:
+  title: User Service API
+  description: API quản lý thông tin người dùng, xác thực và phân quyền trong hệ thống đặt hàng trực tuyến
+  version: 1.0.0
+servers:
+  - url: http://localhost:8083
+    description: Máy chủ phát triển cục bộ
+paths:
+  /api/users/{username}:
+    get:
+      summary: Lấy thông tin người dùng
+      description: Trả về thông tin của người dùng theo tên đăng nhập
+      parameters:
+        - name: username
+          in: path
+          required: true
+          description: Tên đăng nhập của người dùng
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Thao tác thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '404':
+          description: Không tìm thấy người dùng
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Lỗi máy chủ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /api/users/{username}/permission:
+    get:
+      summary: Kiểm tra quyền người dùng
+      description: Kiểm tra xem người dùng có quyền thực hiện các thao tác nhất định không
+      parameters:
+        - name: username
+          in: path
+          required: true
+          description: Tên đăng nhập của người dùng
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Thao tác thành công
+          content:
+            application/json:
+              schema:
+                type: boolean
+                description: true nếu người dùng có quyền, ngược lại là false
+        '404':
+          description: Không tìm thấy người dùng
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Lỗi máy chủ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /api/users/{username}/info:
+    post:
+      summary: Lưu thông tin người dùng
+      description: Lưu thông tin cá nhân của người dùng
+      parameters:
+        - name: username
+          in: path
+          required: true
+          description: Tên đăng nhập của người dùng
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserInfoRequest'
+      responses:
+        '200':
+          description: Thông tin được lưu thành công
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    description: Trạng thái thao tác
+        '400':
+          description: Dữ liệu không hợp lệ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Không tìm thấy người dùng
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Lỗi máy chủ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+components:
+  schemas:
+    User:
+      type: object
+      properties:
+        username:
+          type: string
+          description: Tên đăng nhập
+        role:
+          type: string
+          description: Vai trò (CUSTOMER, ADMIN)
+          enum: [CUSTOMER, ADMIN]
+        isActive:
+          type: boolean
+          description: Trạng thái tài khoản
+        email:
+          type: string
+          format: email
+          description: Địa chỉ email
+        userInfo:
+          $ref: '#/components/schemas/UserInfo'
+    UserInfo:
+      type: object
+      properties:
+        name:
+          type: string
+          description: Họ tên người dùng
+        address:
+          type: string
+          description: Địa chỉ
+        phone:
+          type: string
+          description: Số điện thoại
+    UserInfoRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          description: Họ tên người dùng
+        address:
+          type: string
+          description: Địa chỉ
+        email:
+          type: string
+          format: email
+          description: Địa chỉ email
+        phone:
+          type: string
+          description: Số điện thoại
+      required:
+        - name
+        - address
+        - email
+        - phone
+    Error:
+      type: object
+      properties:
+        code:
+          type: integer
+          format: int32
+          description: Mã lỗi
+        message:
+          type: string
+          description: Thông báo lỗi 

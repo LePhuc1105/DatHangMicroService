@@ -12,7 +12,6 @@ Hệ thống đặt hàng trực tuyến là một ứng dụng microservices ch
 - [Kiểm tra](#kiểm-tra)
 - [API Endpoints](#api-endpoints)
 - [Cấu trúc thư mục](#cấu-trúc-thư-mục)
-- [Góp ý](#góp-ý)
 
 ## Tính năng
 - **Quản lý người dùng**: Đăng nhập, lưu thông tin khách hàng.
@@ -29,14 +28,13 @@ Hệ thống bao gồm các microservices sau, giao tiếp qua REST API:
 - **Cart Service**: Quản lý giỏ hàng.
 - **Order Service**: Xử lý đơn hàng và tích hợp với các dịch vụ khác.
 - **Notification Service**: Gửi email xác nhận.
-- **Frontend**: Giao diện người dùng chạy trên server tĩnh.
+- **Frontend**: Giao diện người dùng.
 
 Cơ sở dữ liệu: **MySQL** với các bảng `Users`, `Products`, `Orders`, `OrderItems`.
 
 ## Yêu cầu
 - **Docker** và **Docker Compose** (để chạy microservices).
 - **Java 17** (cho Spring Boot).
-- **Node.js** (để chạy server tĩnh cho frontend).
 - **MySQL 8.0** (cơ sở dữ liệu).
 - **Resend API Key** (cho gửi email).
 
@@ -47,217 +45,22 @@ Cơ sở dữ liệu: **MySQL** với các bảng `Users`, `Products`, `Orders`,
    cd online-ordering-system
    ```
 
-2. **Cài đặt dependencies**:
-   - Đảm bảo `pom.xml` của các dịch vụ có các dependency sau:
-     ```xml
-     <dependency>
-         <groupId>org.springframework.boot</groupId>
-         <artifactId>spring-boot-starter-web</artifactId>
-     </dependency>
-     <dependency>
-         <groupId>org.springframework.boot</groupId>
-         <artifactId>spring-boot-starter-data-jpa</artifactId>
-     </dependency>
-     <dependency>
-         <groupId>com.mysql</groupId>
-         <artifactId>mysql-connector-j</artifactId>
-         <scope>runtime</scope>
-     </dependency>
-     <dependency>
-         <groupId>com.fasterxml.jackson.core</groupId>
-         <artifactId>jackson-databind</artifactId>
-         <version>2.15.2</version>
-     </dependency>
-     ```
-
-3. **Cấu hình MySQL**:
-   - Tạo database:
-     ```sql
-     CREATE DATABASE ordering_system;
-     ```
-   - Tạo các bảng:
-     ```sql
-     CREATE TABLE Users (
-         username VARCHAR(255) PRIMARY KEY,
-         password VARCHAR(255) NOT NULL,
-         role VARCHAR(50) NOT NULL,
-         is_active BOOLEAN NOT NULL,
-         email VARCHAR(255) NOT NULL
-     );
-
-     CREATE TABLE Products (
-         id BIGINT AUTO_INCREMENT PRIMARY KEY,
-         name VARCHAR(255) NOT NULL,
-         description TEXT,
-         price DECIMAL(10, 2) NOT NULL,
-         quantity_in_stock INT NOT NULL
-     );
-
-     CREATE TABLE Orders (
-         id BIGINT AUTO_INCREMENT PRIMARY KEY,
-         customer_username VARCHAR(255) NOT NULL,
-         total_price DECIMAL(10, 2) NOT NULL,
-         delivery_date DATETIME NOT NULL,
-         status VARCHAR(50) NOT NULL DEFAULT 'PENDING',
-         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-         FOREIGN KEY (customer_username) REFERENCES Users(username)
-     );
-
-     CREATE TABLE OrderItems (
-         id BIGINT AUTO_INCREMENT PRIMARY KEY,
-         order_id BIGINT NOT NULL,
-         product_id BIGINT NOT NULL,
-         quantity INT NOT NULL,
-         unit_price DECIMAL(10, 2) NOT NULL,
-         FOREIGN KEY (order_id) REFERENCES Orders(id),
-         FOREIGN KEY (product_id) REFERENCES Products(id)
-     );
-     ```
-
-4. **Cài đặt Node.js** (cho frontend):
+2. **Cấu hình môi trường**:
    ```bash
-   npm install -g http-server
+   cp .env.example .env
+   # Chỉnh sửa các biến môi trường trong file .env
    ```
-
-## Cấu hình
-1. **File cấu hình (`application.yml`)**:
-   - **User Service** (`user-service/src/main/resources/application.yml`):
-     ```yaml
-     server:
-       port: 8083
-     spring:
-       datasource:
-         url: jdbc:mysql://mysql:3306/ordering_system
-         username: root
-         password: password
-       jpa:
-         hibernate:
-           ddl-auto: update
-     ```
-   - **Product Service** (`product-service/src/main/resources/application.yml`):
-     ```yaml
-     server:
-       port: 8082
-     spring:
-       datasource:
-         url: jdbc:mysql://mysql:3306/ordering_system
-         username: root
-         password: password
-       jpa:
-         hibernate:
-           ddl-auto: update
-     ```
-   - **Cart Service** (`cart-service/src/main/resources/application.yml`):
-     ```yaml
-     server:
-       port: 8084
-     spring:
-       datasource:
-         url: jdbc:mysql://mysql:3306/ordering_system
-         username: root
-         password: password
-       jpa:
-         hibernate:
-           ddl-auto: update
-     ```
-   - **Order Service** (`order-service/src/main/resources/application.yml`):
-     ```yaml
-     server:
-       port: 8081
-     spring:
-       datasource:
-         url: jdbc:mysql://mysql:3306/ordering_system
-         username: root
-         password: password
-       jpa:
-         hibernate:
-           ddl-auto: update
-     ```
-   - **Notification Service** (`notification-service/src/main/resources/application.yml`):
-     ```yaml
-     server:
-       port: 8085
-     spring:
-       datasource:
-         url: jdbc:mysql://mysql:3306/ordering_system
-         username: root
-         password: password
-       jpa:
-         hibernate:
-           ddl-auto: update
-     resend:
-       api-key: <your-resend-api-key>
-     ```
-
-2. **Docker Compose (`docker-compose.yml`)**:
-   ```yaml
-   version: '3.8'
-   services:
-     mysql:
-       image: mysql:8.0
-       environment:
-         MYSQL_ROOT_PASSWORD: password
-         MYSQL_DATABASE: ordering_system
-       ports:
-         - "3306:3306"
-       volumes:
-         - mysql-data:/var/lib/mysql
-     user-service:
-       build: ./user-service
-       ports:
-         - "8083:8083"
-       depends_on:
-         - mysql
-     product-service:
-       build: ./product-service
-       ports:
-         - "8082:8082"
-       depends_on:
-         - mysql
-     cart-service:
-       build: ./cart-service
-       ports:
-         - "8084:8084"
-       depends_on:
-         - mysql
-     order-service:
-       build: ./order-service
-       ports:
-         - "8081:8081"
-       depends_on:
-         - mysql
-         - user-service
-         - product-service
-         - cart-service
-         - notification-service
-     notification-service:
-       build: ./notification-service
-       ports:
-         - "8085:8085"
-       depends_on:
-         - mysql
-   volumes:
-     mysql-data:
-   ```
-
-3. **Frontend**:
-   - Đặt file `index.html` trong thư mục `frontend/`.
 
 ## Chạy ứng dụng
-1. **Chạy backend**:
+1. **Khởi động tất cả services**:
    ```bash
-   docker-compose up --build
+   docker-compose up -d
    ```
 
-2. **Chạy frontend**:
-   ```bash
-   cd frontend
-   npx http-server -p 3000
-   ```
-
-3. **Truy cập**:
-   - Frontend: `http://localhost:3000`
-   - API Documentation (nếu có Swagger): `http://localhost:<port>/swagger-ui.html`
+2. **Truy cập ứng dụng**:
+   - Frontend: `http://localhost:80`
+   - API Gateway: `http://localhost:8080`
+   - Eureka Server: `http://localhost:8761`
 
 ## Kiểm tra
 1. **Thêm dữ liệu mẫu**:
@@ -272,66 +75,35 @@ Cơ sở dữ liệu: **MySQL** với các bảng `Users`, `Products`, `Orders`,
 2. **Kiểm tra chức năng**:
    - Đăng nhập với `testuser:password`.
    - Thêm sản phẩm vào giỏ hàng.
-   - Đặt hàng với ngày giao hàng sau 2 ngày (ví dụ, 2025-05-08 nếu hôm nay là 2025-05-05).
-   - Kiểm tra email xác nhận (đảm bảo email được xác minh trong Resend dashboard).
-   - Kiểm tra log:
-     ```bash
-     docker logs order-service
-     docker logs notification-service
-     ```
-   - Kiểm tra bảng `Orders` và `OrderItems`:
-     ```sql
-     SELECT * FROM Orders;
-     SELECT * FROM OrderItems;
-     ```
-
-3. **Kiểm tra lỗi**:
-   - Đặt hàng mà không chọn ngày giao hàng → Lỗi: "Thời gian giao hàng là bắt buộc".
-   - Đặt hàng với ngày giao hàng trước 2 ngày → Lỗi: "Thời gian giao hàng phải ít nhất 2 ngày sau thời điểm hiện tại".
-   - Đặt hàng với số lượng vượt quá tồn kho → Lỗi: "Sản phẩm không đủ số lượng trong kho".
+   - Đặt hàng với ngày giao hàng sau 2 ngày.
+   - Kiểm tra email xác nhận.
 
 ## API Endpoints
-- **User Service** (`http://localhost:8083`):
-  - `GET /api/users/{username}/permission`: Kiểm tra quyền người dùng.
-  - `POST /api/users/{username}/info`: Lưu thông tin người dùng.
-- **Product Service** (`http://localhost:8082`):
-  - `GET /api/products`: Lấy danh sách sản phẩm.
-  - `GET /api/products/{id}`: Lấy thông tin sản phẩm.
-  - `GET /api/products/check`: Kiểm tra tồn kho.
-  - `PUT /api/products/{id}/updateQuantity`: Cập nhật số lượng tồn kho.
-- **Cart Service** (`http://localhost:8084`):
-  - `GET /api/cart/{username}/items`: Lấy giỏ hàng.
-  - `POST /api/cart/{username}/items`: Thêm sản phẩm vào giỏ.
-  - `PUT /api/cart/{username}/items/{productId}`: Cập nhật số lượng.
-  - `DELETE /api/cart/{username}/items/{productId}`: Xóa sản phẩm.
-- **Order Service** (`http://localhost:8081`):
-  - `POST /api/orders`: Tạo đơn hàng.
-  - `GET /api/orders/{id}`: Lấy thông tin đơn hàng.
-- **Notification Service** (`http://localhost:8085`):
-  - `POST /api/notifications/email`: Gửi email xác nhận.
+Tất cả API endpoints có thể được truy cập thông qua API Gateway tại `http://localhost:8080`.
+
+Chi tiết API của từng service được mô tả trong thư mục `docs/api-specs/`.
 
 ## Cấu trúc thư mục
 ```
-online-ordering-system/
-├── user-service/
-│   └── src/main/java/com/example/userservice/
-├── product-service/
-│   └── src/main/java/com/example/productservice/
-├── cart-service/
-│   └── src/main/java/com/example/cartservice/
-├── order-service/
-│   └── src/main/java/com/example/orderservice/
-├── notification-service/
-│   └── src/main/java/com/example/notificationservice/
-├── frontend/
-│   └── index.html
-├── docker-compose.yml
-└── README.md
+./
+├── README.md                       # Tài liệu hướng dẫn
+├── .env.example                    # Mẫu biến môi trường
+├── docker-compose.yml              # Cấu hình Docker Compose
+├── docs/                           # Tài liệu
+│   ├── architecture.md             # Mô tả kiến trúc hệ thống
+│   ├── analysis-and-design.md      # Phân tích và thiết kế chi tiết
+│   ├── asset/                      # Hình ảnh, sơ đồ
+│   └── api-specs/                  # Đặc tả API
+│       ├── order-service.yaml
+│       └── ...
+├── scripts/                        # Scripts tiện ích
+├── services/                       # Các microservices
+│   ├── order-service/
+│   ├── product-service/
+│   ├── user-service/
+│   ├── cart-service/
+│   ├── notification-service/
+│   └── eureka-server/
+├── api-gateway/                    # API Gateway
+└── frontend/                       # Giao diện người dùng
 ```
-
-## Góp ý
-- Thêm **Swagger** để tài liệu hóa API.
-- Tích hợp **JWT** để bảo mật API.
-- Cải thiện giao diện frontend với **React** hoặc **Vue.js**.
-- Thêm **unit tests** và **integration tests** cho các dịch vụ.
-- Tối ưu hóa kiểm tra tồn kho bằng giao dịch nguyên tử để tránh race condition.
