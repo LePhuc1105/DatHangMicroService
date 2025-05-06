@@ -1,60 +1,74 @@
-# Kiến trúc Hệ thống Đặt hàng Trực tuyến
+# Kiến trúc Hệ thống
 
 ## Tổng quan
-Hệ thống được xây dựng theo kiến trúc microservices sử dụng Spring Boot, MySQL, và giao diện người dùng bằng HTML/JavaScript với Tailwind CSS.
+Hệ thống đặt hàng trực tuyến là một nền tảng microservices cho phép người dùng xem sản phẩm, thêm vào giỏ hàng, đặt hàng và nhận thông báo xác nhận. Hệ thống được thiết kế theo kiến trúc microservices để đảm bảo tính mô-đun, khả năng mở rộng và khả năng chịu lỗi.
 
-## Các thành phần chính
+Các thành phần chính của hệ thống bao gồm dịch vụ người dùng, dịch vụ sản phẩm, dịch vụ giỏ hàng, dịch vụ đơn hàng, dịch vụ thông báo, máy chủ Eureka và API Gateway, tất cả đều phối hợp để cung cấp trải nghiệm người dùng liền mạch.
+
+## Các thành phần hệ thống
+
+### User Service
+Quản lý thông tin người dùng, xác thực và phân quyền. Dịch vụ này lưu trữ dữ liệu người dùng, xử lý đăng nhập và cung cấp thông tin về quyền truy cập cho các dịch vụ khác.
+
+### Product Service
+Quản lý danh mục sản phẩm và tồn kho. Dịch vụ này cho phép truy vấn thông tin sản phẩm, kiểm tra tồn kho và cập nhật số lượng sản phẩm khi đơn hàng được tạo.
+
+### Cart Service
+Quản lý giỏ hàng của người dùng. Dịch vụ này cho phép thêm, cập nhật hoặc xóa sản phẩm khỏi giỏ hàng của người dùng và lưu trữ trạng thái giỏ hàng.
+
+### Order Service
+Xử lý việc tạo và quản lý đơn hàng. Dịch vụ này tích hợp với các dịch vụ khác để xác thực người dùng, kiểm tra tồn kho và gửi thông báo khi đơn hàng được tạo.
+
+### Notification Service
+Gửi thông báo qua email cho người dùng khi đơn hàng được tạo. Dịch vụ này sử dụng Resend API để gửi email.
 
 ### Eureka Server
-- Chức năng: Service discovery, giúp các service đăng ký và tìm kiếm nhau
-- Port: 8761
+Cung cấp khám phá dịch vụ và đăng ký dịch vụ. Tất cả các microservices đăng ký với Eureka Server, cho phép chúng khám phá và giao tiếp với nhau.
 
 ### API Gateway
-- Chức năng: Cổng API trung tâm xử lý và định tuyến các yêu cầu
-- Port: 8080
+Đóng vai trò là điểm vào duy nhất cho các yêu cầu từ người dùng. API Gateway định tuyến yêu cầu đến các dịch vụ tương ứng và cung cấp các tính năng như bảo mật, cân bằng tải và giám sát.
 
-### Các Microservices
+## Giao tiếp
 
-#### Order Service
-- Chức năng: Xử lý đặt hàng, lưu trữ thông tin đơn hàng
-- Port: 8081
-- API: `/api/orders`
+Các dịch vụ trong hệ thống giao tiếp thông qua REST API. API Gateway định tuyến các yêu cầu từ người dùng đến các dịch vụ cụ thể dựa trên các mẫu URL.
 
-#### Product Service
-- Chức năng: Quản lý thông tin sản phẩm, kiểm tra tồn kho
-- Port: 8082
-- API: `/api/products`
+Bên trong hệ thống, các dịch vụ khám phá nhau thông qua Eureka Server và giao tiếp trực tiếp khi cần. Ví dụ, khi một đơn hàng được tạo, Order Service giao tiếp với Product Service để kiểm tra tồn kho, với User Service để xác thực người dùng và với Notification Service để gửi email xác nhận.
 
-#### User Service
-- Chức năng: Quản lý người dùng, xác thực và phân quyền
-- Port: 8083
-- API: `/api/users`
-
-#### Cart Service
-- Chức năng: Quản lý giỏ hàng người dùng
-- Port: 8084
-- API: `/api/cart`
-
-#### Notification Service
-- Chức năng: Gửi thông báo (email) qua Resend
-- Port: 8085
-- API: `/api/notifications`
-
-### Database
-- MySQL 8.0
-- Quản lý các bảng: Users, Products, Orders, OrderItems
-
-### Frontend
-- HTML/JavaScript/Tailwind CSS
-- Port: 80
+Trong môi trường Docker Compose, các dịch vụ có thể tham chiếu đến nhau bằng tên dịch vụ (ví dụ: `http://order-service:8082`) thay vì địa chỉ IP.
 
 ## Luồng dữ liệu
-1. Người dùng tương tác với Frontend
-2. Frontend gửi yêu cầu đến API Gateway
-3. API Gateway định tuyến yêu cầu đến các service tương ứng
-4. Các service xử lý yêu cầu và gửi phản hồi
-5. Phản hồi được chuyển lại cho người dùng
 
-## Bảo mật
-- Cơ chế xác thực và phân quyền người dùng
-- Cần triển khai JWT trong các phiên bản tương lai 
+1. **Luồng đặt hàng**:
+   - Người dùng xác thực thông qua User Service
+   - Người dùng duyệt sản phẩm từ Product Service
+   - Người dùng thêm sản phẩm vào giỏ hàng, được lưu trong Cart Service
+   - Khi đặt hàng, Order Service kiểm tra với Product Service về tồn kho
+   - Nếu tồn kho đủ, Order Service tạo đơn hàng và cập nhật tồn kho trong Product Service
+   - Order Service yêu cầu Notification Service gửi email xác nhận
+
+2. **Phụ thuộc bên ngoài**:
+   - MySQL: Mỗi dịch vụ có cơ sở dữ liệu riêng
+   - Resend API: Được sử dụng bởi Notification Service để gửi email
+
+## Sơ đồ
+
+Hình minh họa kiến trúc hệ thống được lưu tại `docs/asset/Architechture.png`:
+
+![Flowchart](asset/Architechture.png)
+
+Hình minh họa Cơ sở dữ liệu hệ thống được lưu tại `docs/asset/CSDL.png`:
+![Flowchart](asset/CSDL.png)
+
+## Khả năng mở rộng & Chịu lỗi
+
+### Khả năng mở rộng
+- Các dịch vụ có thể được mở rộng độc lập dựa trên nhu cầu
+- Nhiều phiên bản của cùng một dịch vụ có thể được đăng ký với Eureka Server
+- API Gateway có thể cân bằng tải giữa các phiên bản của cùng một dịch vụ
+
+### Chịu lỗi
+- Eureka Server cung cấp khả năng phát hiện lỗi dịch vụ
+- Nếu một dịch vụ không khả dụng, các dịch vụ khác có thể tiếp tục hoạt động với chức năng bị giới hạn
+- Các cơ chế thử lại và ngắt mạch có thể được triển khai để cải thiện khả năng chịu lỗi
+
+Kiến trúc microservices này đảm bảo rằng hệ thống có thể mở rộng để xử lý tải cao hơn và chịu được sự cố trong các dịch vụ riêng lẻ mà không ảnh hưởng đến toàn bộ hệ thống. 
